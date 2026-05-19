@@ -39,7 +39,7 @@ const BG_INSET = "#0b0b14";
 
 const BORDER      = "#15152050";
 const BORDER_CARD = "#18182a";
-const LABEL_COLOR = "#38384e";
+const LABEL_COLOR = "#52526a";
 const R = 6;
 
 // ── Utilities ──────────────────────────────────────────────────
