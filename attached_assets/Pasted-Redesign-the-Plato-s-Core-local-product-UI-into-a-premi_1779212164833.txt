@@ -1,0 +1,150 @@
+Redesign the Plato’s Core local product UI into a premium, production-quality operator workspace.
+
+Important:
+- Do not change the backend API routes.
+- Do not remove existing functionality.
+- Keep the app connected to the current data shape from:
+  - /api/workspaces
+  - /api/workspaces/:id/dashboard
+  - /api/workspaces/:id/pipeline
+  - /api/workspaces/:id/opportunities/:opportunityId/assign
+  - /api/workspaces/:id/opportunities/:opportunityId/feedback
+- Improve the UI/UX only.
+- Keep the product as a real app surface, not a marketing page.
+
+Product:
+Plato’s is a high-intent signal engine for outbound teams.
+
+Core workflow:
+signal found -> source proof -> dedupe/CRM guardrails -> route to owner -> feedback loop
+
+The user should understand the product in under 5 seconds:
+Plato’s finds verified public buying intent and routes only the opportunities worth acting on.
+
+Design goal:
+Make this feel like a premium operator-grade SaaS product, closer to Linear / Ramp / Vercel / Clay quality.
+It should not look like a flat internal admin board.
+
+Main screen:
+Build a “Signal Command Center.”
+
+Layout:
+- left rail: tenant/workspace switcher, source health, weekly quota
+- center: selected high-intent signal as the main working object
+- right rail: proof, guardrails, routing, feedback, and diagnostics
+
+Important UI hierarchy:
+The selected signal should be the hero object.
+The user should see:
+- company
+- contact/person
+- source platform
+- evidence snippet
+- why now
+- fit score
+- confidence score
+- freshness score
+- duplicate/CRM status
+- route/destination
+- recommended action
+
+Required sections:
+1. Live Signal Queue
+A dense, polished list of signals.
+Each item should show:
+- company
+- source
+- freshness
+- disposition
+- fit/confidence
+- route status
+
+2. Selected Signal Detail
+This should feel like the main command surface.
+Show:
+- source evidence
+- source URL / source platform
+- seen time
+- last verified time
+- confidence/freshness/fit
+- disposition: billable opportunity, intent update, suppressed, or watchlist
+- recommended channel
+- owner
+
+3. Proof Timeline
+Show the workflow:
+- signal captured
+- source verified
+- CRM/dedupe checked
+- model path chosen
+- routed to owner
+- feedback received
+
+4. Route / Action Area
+Buttons:
+- View Source
+- Route to Owner
+- Start Outreach
+- Mark Duplicate
+- Mark Outdated
+- Better Contact
+
+5. Signal Health
+Show:
+- raw signals scanned
+- unique accounts
+- duplicates suppressed
+- stale signals
+- billable opportunities
+- intent updates
+- weekly quota progress
+- source yield by channel
+
+6. Diagnostics Drawer or Compact Rail
+Show model/runtime/cost guard info, but keep it secondary.
+Do not make model/runtime details dominate the page.
+
+Visual style:
+- dark, premium, sharp, operational
+- use depth, layering, and spacing intentionally
+- avoid huge empty cards
+- avoid equal-weight status panels
+- avoid generic dashboard metrics grid
+- avoid purple AI slop
+- avoid decorative blobs/orbs
+- use subtle cyan/green accents sparingly
+- make the information dense but readable
+- cards should be restrained, 8px radius or less
+- text must not overflow on desktop or mobile
+- use clear action buttons and compact status badges
+
+Interaction:
+- clicking queue items should update the selected signal
+- feedback buttons should call the existing feedback API
+- route button should call the existing assign API
+- selected state should be obvious
+- responsive layout should work on laptop and mobile
+
+Copy:
+Use language consistent with the product:
+- high-intent signal
+- verified buying moment
+- source evidence
+- intent update
+- billable opportunity
+- duplicate suppressed
+- no filler
+- route to owner
+- weekly quota
+- source yield
+
+Do not use:
+- AI SDR
+- cold email sender
+- lead enrichment copilot
+- CRM hygiene tool
+- autonomous outbound bot
+
+Desired result:
+A buyer or investor looking at the app should immediately say:
+“This is a real product. It finds public intent, proves it, filters duplicates, and routes the opportunity.”
