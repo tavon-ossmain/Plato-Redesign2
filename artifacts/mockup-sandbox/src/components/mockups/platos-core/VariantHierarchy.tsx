@@ -560,14 +560,7 @@ export function VariantHierarchy() {
                 </div>
               </div>
 
-              {/* Score KPIs */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                <ScoreKPI value={selected.fitScore}        label="Fit Score"   />
-                <ScoreKPI value={selected.confidenceScore} label="Confidence"  />
-                <ScoreKPI value={selected.freshnessScore}  label="Freshness"   />
-              </div>
-
-              {/* Evidence block — hero */}
+              {/* Evidence block — hero (leads before scores) */}
               <div
                 className="mb-3 p-4"
                 style={{
@@ -602,6 +595,13 @@ export function VariantHierarchy() {
               >
                 <SectionLabel>Why Now</SectionLabel>
                 <p className="text-xs text-zinc-300 leading-relaxed">{selected.whyNow}</p>
+              </div>
+
+              {/* Score KPIs — context for what you just read */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <ScoreKPI value={selected.fitScore}        label="Fit Score"   />
+                <ScoreKPI value={selected.confidenceScore} label="Confidence"  />
+                <ScoreKPI value={selected.freshnessScore}  label="Freshness"   />
               </div>
 
               {/* Route info row */}
@@ -683,42 +683,53 @@ export function VariantHierarchy() {
             </div>
           </div>
 
-          {/* Proof Timeline */}
-          <div className="px-4 py-4 border-b" style={{ borderColor: BORDER_CARD }}>
-            <SectionLabel>Proof Timeline</SectionLabel>
-            {PROOF_STEPS.map((step, i) => {
-              const isLast = i === PROOF_STEPS.length - 1;
-              const isDone = done.has(step.key);
-              return (
-                <div key={step.key} className="flex items-start gap-3">
-                  <div className="flex flex-col items-center">
+          {/* Proof Progress — compact horizontal strip */}
+          <div className="px-4 py-3 border-b" style={{ borderColor: BORDER_CARD }}>
+            <div className="flex items-center justify-between mb-2.5">
+              <SectionLabel>Proof</SectionLabel>
+              <span className="text-[9px] font-mono" style={{ color: LABEL_COLOR }}>
+                {PROOF_STEPS.filter((s) => done.has(s.key)).length}/{PROOF_STEPS.length}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {PROOF_STEPS.map((step, i) => {
+                const isDone = done.has(step.key);
+                const isNext = !isDone && PROOF_STEPS.slice(0, i).every((s) => done.has(s.key));
+                return (
+                  <div key={step.key} className="relative group flex-1">
+                    {/* Track line between dots */}
+                    <div className="flex items-center">
+                      <div
+                        className="w-full h-[3px] rounded-full transition-colors"
+                        style={{
+                          background: isDone ? C : isNext ? `${C}30` : "#15152a",
+                        }}
+                      />
+                    </div>
+                    {/* Dot */}
                     <div
-                      className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all"
                       style={{
-                        background: isDone ? `${C}18` : "#10101c",
-                        border: `1px solid ${isDone ? `${C}38` : "#1c1c2e"}`,
+                        background: isDone ? C : isNext ? "#1c1c2e" : "#10101c",
+                        border: `1px solid ${isDone ? C : isNext ? `${C}40` : "#1c1c2e"}`,
+                        boxShadow: isDone ? `0 0 5px ${C}60` : "none",
+                      }}
+                    />
+                    {/* Tooltip on hover */}
+                    <div
+                      className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 text-[9px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10"
+                      style={{
+                        background: "#0d0d18",
+                        border: `1px solid ${BORDER_CARD}`,
+                        color: isDone ? "#d4d4d8" : LABEL_COLOR,
                       }}
                     >
-                      {isDone && <div className="w-1.5 h-1.5 rounded-full" style={{ background: C }} />}
-                    </div>
-                    {!isLast && (
-                      <div
-                        className="w-px flex-1 my-0.5"
-                        style={{ minHeight: 14, background: isDone ? `${C}22` : "#15152a" }}
-                      />
-                    )}
-                  </div>
-                  <div className="pb-3">
-                    <span
-                      className="text-[11px]"
-                      style={{ color: isDone ? "#d4d4d8" : LABEL_COLOR }}
-                    >
                       {step.label}
-                    </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           {/* Mark As — full-width stacked, not a cramped 2-col grid */}
