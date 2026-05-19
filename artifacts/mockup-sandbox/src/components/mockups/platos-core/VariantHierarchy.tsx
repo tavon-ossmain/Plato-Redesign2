@@ -67,7 +67,7 @@ export function VariantHierarchy() {
           <span className="text-zinc-600 text-sm mx-1">/</span>
           <span className="text-zinc-400 text-sm">Signal Command Center</span>
           <span className="ml-3 text-[10px] px-2 py-0.5 rounded text-zinc-500" style={{ background: "#111115", border: "1px solid #1d1d25" }}>
-            Variant A · Information Hierarchy
+            Refined
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -237,8 +237,40 @@ export function VariantHierarchy() {
           </div>
         </main>
 
-        {/* Right: proof + actions */}
-        <aside className="flex flex-col shrink-0 border-l overflow-y-auto" style={{ width: 240, borderColor: "#161620", background: "#0a0a0d" }}>
+        {/* Right: actions first, then proof, then yield */}
+        <aside className="flex flex-col shrink-0 border-l overflow-y-auto" style={{ width: 248, borderColor: "#161620", background: "#0a0a0d" }}>
+
+          {/* PRIMARY ACTION — top of rail, always reachable without scrolling */}
+          <div className="p-4 border-b" style={{ borderColor: "#161620" }}>
+            <button
+              onClick={() => setRouted(p => ({ ...p, [selected.id]: true }))}
+              className="w-full px-4 py-3 rounded text-sm font-semibold text-left transition-colors mb-2"
+              style={{
+                background: routed[selected.id] ? "rgba(52,211,153,0.08)" : "rgba(52,211,153,0.13)",
+                border: `1px solid ${routed[selected.id] ? "rgba(52,211,153,0.22)" : "rgba(52,211,153,0.38)"}`,
+                color: "#34d399",
+              }}
+            >
+              {routed[selected.id]
+                ? <><span className="opacity-60 mr-2">✓</span>Re-route to Owner</>
+                : <>Route to Owner</>}
+            </button>
+            <div className="flex gap-1.5">
+              <button
+                className="flex-1 px-3 py-2 rounded text-xs font-medium text-left transition-colors"
+                style={{ background: "rgba(34,211,238,0.07)", border: "1px solid rgba(34,211,238,0.2)", color: "#22d3ee" }}
+              >
+                Start Outreach
+              </button>
+              <button
+                className="flex-1 px-3 py-2 rounded text-xs font-medium text-left"
+                style={{ background: "#101015", border: "1px solid #1c1c26", color: "#71717a" }}
+              >
+                View Source
+              </button>
+            </div>
+          </div>
+
           {/* Proof timeline */}
           <div className="p-4 border-b" style={{ borderColor: "#161620" }}>
             <div className="text-[9px] text-zinc-700 uppercase tracking-widest mb-3">Proof Timeline</div>
@@ -248,10 +280,21 @@ export function VariantHierarchy() {
               return (
                 <div key={step.key} className="flex items-start gap-2.5">
                   <div className="flex flex-col items-center">
-                    <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: isDone ? "rgba(52,211,153,0.12)" : "#111118", border: `1px solid ${isDone ? "rgba(52,211,153,0.35)" : "#1c1c28"}` }}>
+                    <div
+                      className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                      style={{
+                        background: isDone ? "rgba(52,211,153,0.12)" : "#111118",
+                        border: `1px solid ${isDone ? "rgba(52,211,153,0.35)" : "#1c1c28"}`,
+                      }}
+                    >
                       {isDone && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
                     </div>
-                    {!isLast && <div className="w-px flex-1 my-0.5" style={{ minHeight: 14, background: isDone ? "rgba(52,211,153,0.18)" : "#161622" }} />}
+                    {!isLast && (
+                      <div
+                        className="w-px flex-1 my-0.5"
+                        style={{ minHeight: 14, background: isDone ? "rgba(52,211,153,0.18)" : "#161622" }}
+                      />
+                    )}
                   </div>
                   <div className="pb-2.5">
                     <span className={`text-[11px] ${isDone ? "text-zinc-300" : "text-zinc-600"}`}>{step.label}</span>
@@ -261,32 +304,40 @@ export function VariantHierarchy() {
             })}
           </div>
 
-          {/* Actions — clear hierarchy: primary > secondary > destructive */}
+          {/* Mark As — secondary feedback, visually quieter */}
           <div className="p-4 border-b" style={{ borderColor: "#161620" }}>
-            <div className="text-[9px] text-zinc-700 uppercase tracking-widest mb-2">Actions</div>
-            {/* Primary */}
-            <button onClick={() => setRouted(p => ({ ...p, [selected.id]: true }))} className="w-full px-3 py-2.5 rounded text-xs font-semibold mb-2 text-left transition-colors" style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399" }}>
-              {routed[selected.id] ? "Re-route to Owner" : "Route to Owner"}
-            </button>
-            {/* Secondary */}
-            <button className="w-full px-3 py-2.5 rounded text-xs font-medium mb-1 text-left" style={{ background: "rgba(34,211,238,0.06)", border: "1px solid rgba(34,211,238,0.2)", color: "#22d3ee" }}>
-              Start Outreach
-            </button>
-            <button className="w-full px-3 py-2 rounded text-xs font-medium mb-3 text-left" style={{ background: "#101015", border: "1px solid #1c1c26", color: "#a1a1aa" }}>
-              View Source
-            </button>
-            {/* Destructive group */}
-            <div className="text-[9px] text-zinc-700 uppercase tracking-widest mb-1.5">Mark As</div>
+            <div className="text-[9px] text-zinc-700 uppercase tracking-widest mb-2">Mark As</div>
             <div className="grid grid-cols-2 gap-1">
-              {["Duplicate", "Outdated", "Better Contact", "Watchlist"].map(label => (
-                <button key={label} onClick={() => feedback[selected.id] !== label.toLowerCase() && setFeedback(p => ({ ...p, [selected.id]: label.toLowerCase() }))} className="px-2 py-1.5 rounded text-[10px] text-center font-medium" style={{ background: "#0d0d12", border: "1px solid #1a1a24", color: "#52525b" }}>
-                  {label}
-                </button>
-              ))}
+              {[
+                { key: "duplicate", label: "Duplicate" },
+                { key: "outdated", label: "Outdated" },
+                { key: "better_contact", label: "Better Contact" },
+                { key: "watchlist", label: "Watchlist" },
+              ].map(item => {
+                const isActive = feedback[selected.id] === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => setFeedback(p => ({ ...p, [selected.id]: item.key }))}
+                    className="px-2 py-1.5 rounded text-[10px] text-center font-medium transition-colors"
+                    style={{
+                      background: isActive ? "#141420" : "#0d0d12",
+                      border: isActive ? "1px solid #28283a" : "1px solid #1a1a24",
+                      color: isActive ? "#a1a1aa" : "#52525b",
+                    }}
+                  >
+                    {isActive && <span className="text-emerald-600 mr-1">✓</span>}
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
             {feedback[selected.id] && (
-              <div className="mt-2 px-2 py-1.5 rounded text-[10px] text-zinc-500 text-center" style={{ background: "#0d0d12", border: "1px solid #181820" }}>
-                Feedback sent · {feedback[selected.id]}
+              <div
+                className="mt-2 px-2 py-1.5 rounded text-[10px] text-zinc-500 text-center"
+                style={{ background: "#0c0c10", border: "1px solid #161620" }}
+              >
+                Feedback sent · {feedback[selected.id].replace("_", " ")}
               </div>
             )}
           </div>
@@ -295,9 +346,12 @@ export function VariantHierarchy() {
           <div className="p-4">
             <div className="text-[9px] text-zinc-700 uppercase tracking-widest mb-2">Source Yield</div>
             {HEALTH.sources.map(src => (
-              <div key={src.name} className="mb-2">
+              <div key={src.name} className="mb-2.5">
                 <div className="flex justify-between mb-0.5">
-                  <span className="text-[10px] text-zinc-500">{src.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: statusDot[src.status] }} />
+                    <span className="text-[10px] text-zinc-500">{src.name}</span>
+                  </div>
                   <span className="text-[10px] font-mono text-zinc-600">{src.yield}%</span>
                 </div>
                 <div className="h-[2px] rounded-full overflow-hidden" style={{ background: "#161622" }}>
