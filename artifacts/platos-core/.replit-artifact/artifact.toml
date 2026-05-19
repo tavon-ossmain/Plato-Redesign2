@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Plato's Core — Signal Command Center"
+version = "1.0.0"
+id = "artifacts/platos-core"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25155
+
+[services.development]
+run = "pnpm --filter @workspace/platos-core run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/platos-core", "run", "build" ]
+publicDir = "artifacts/platos-core/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25155"
+BASE_PATH = "/"

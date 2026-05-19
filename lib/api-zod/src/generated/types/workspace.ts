@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface Workspace {
+  id: string;
+  name: string;
+  plan: string;
+  quota: number;
+  used: number;
 }

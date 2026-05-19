@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Plato's Core — Signal Command Center API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: workspaces
+    description: Workspace operations
+  - name: pipeline
+    description: Signal pipeline operations
+  - name: feedback
+    description: Signal feedback operations
 paths:
   /healthz:
     get:
@@ -24,6 +30,135 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /workspaces:
+    get:
+      operationId: listWorkspaces
+      tags: [workspaces]
+      summary: List workspaces
+      responses:
+        "200":
+          description: List of workspaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Workspace"
+
+  /workspaces/{workspaceId}/dashboard:
+    get:
+      operationId: getWorkspaceDashboard
+      tags: [workspaces]
+      summary: Get workspace dashboard stats and source health
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /workspaces/{workspaceId}/pipeline:
+    get:
+      operationId: getWorkspacePipeline
+      tags: [pipeline]
+      summary: Get signals pipeline for a workspace
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of signals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Signal"
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /workspaces/{workspaceId}/opportunities/{opportunityId}/assign:
+    post:
+      operationId: assignOpportunity
+      tags: [pipeline]
+      summary: Route a signal to an owner
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignInput"
+      responses:
+        "200":
+          description: Signal assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Signal"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /feedback:
+    post:
+      operationId: submitFeedback
+      tags: [feedback]
+      summary: Submit feedback for a signal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackInput"
+      responses:
+        "200":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Signal"
+        "404":
+          description: Signal not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +169,184 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Workspace:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        plan:
+          type: string
+        quota:
+          type: integer
+        used:
+          type: integer
+      required:
+        - id
+        - name
+        - plan
+        - quota
+        - used
+
+    SourceHealth:
+      type: object
+      properties:
+        name:
+          type: string
+        yield:
+          type: integer
+        status:
+          type: string
+      required:
+        - name
+        - yield
+        - status
+
+    Dashboard:
+      type: object
+      properties:
+        rawScanned:
+          type: integer
+        uniqueAccounts:
+          type: integer
+        duplicatesSuppressed:
+          type: integer
+        staleSignals:
+          type: integer
+        billableOpportunities:
+          type: integer
+        intentUpdates:
+          type: integer
+        quota:
+          type: integer
+        used:
+          type: integer
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceHealth"
+      required:
+        - rawScanned
+        - uniqueAccounts
+        - duplicatesSuppressed
+        - staleSignals
+        - billableOpportunities
+        - intentUpdates
+        - quota
+        - used
+        - sources
+
+    Contact:
+      type: object
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+        linkedin:
+          type: string
+      required:
+        - name
+        - title
+        - linkedin
+
+    Signal:
+      type: object
+      properties:
+        id:
+          type: string
+        company:
+          type: string
+        contact:
+          $ref: "#/components/schemas/Contact"
+        source:
+          type: string
+        sourcePlatform:
+          type: string
+        sourceUrl:
+          type: string
+        evidenceSnippet:
+          type: string
+        whyNow:
+          type: string
+        fitScore:
+          type: integer
+        confidenceScore:
+          type: integer
+        freshnessScore:
+          type: integer
+        seenAt:
+          type: string
+        lastVerifiedAt:
+          type: string
+        disposition:
+          type: string
+        recommendedChannel:
+          type: string
+        owner:
+          type: string
+        route:
+          type: string
+        crmStatus:
+          type: string
+        dedupeStatus:
+          type: string
+        modelPath:
+          type: string
+        rawSource:
+          type: string
+        feedback:
+          type: ["string", "null"]
+      required:
+        - id
+        - company
+        - contact
+        - source
+        - sourcePlatform
+        - sourceUrl
+        - evidenceSnippet
+        - whyNow
+        - fitScore
+        - confidenceScore
+        - freshnessScore
+        - seenAt
+        - lastVerifiedAt
+        - disposition
+        - recommendedChannel
+        - owner
+        - route
+        - crmStatus
+        - dedupeStatus
+        - modelPath
+        - rawSource
+
+    AssignInput:
+      type: object
+      properties:
+        owner:
+          type: string
+      required:
+        - owner
+
+    FeedbackInput:
+      type: object
+      properties:
+        signalId:
+          type: string
+        workspaceId:
+          type: string
+        feedback:
+          type: string
+      required:
+        - signalId
+        - workspaceId
+        - feedback
