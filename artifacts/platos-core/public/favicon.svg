@@ -1,3 +1,31 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg width="180" height="180" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#07070E"/>
+  <defs>
+    <linearGradient id="leftPlane" x1="116" y1="116" x2="250" y2="428" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D7DADF"/>
+      <stop offset="1" stop-color="#757B83"/>
+    </linearGradient>
+    <linearGradient id="rightPlane" x1="396" y1="116" x2="262" y2="428" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F0F2F4"/>
+      <stop offset="1" stop-color="#8B949E"/>
+    </linearGradient>
+    <linearGradient id="centerSpine" x1="256" y1="144" x2="256" y2="438" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A5ACB4"/>
+      <stop offset="1" stop-color="#575E66"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(24 18) scale(0.91)">
+    <path d="M128 114L256 194L384 114L318 212L256 246L194 212L128 114Z" fill="url(#leftPlane)"/>
+    <path d="M256 194L384 114L318 212L256 246V194Z" fill="url(#rightPlane)"/>
+    <path d="M154 176L214 250L194 338L156 286L154 176Z" fill="url(#leftPlane)"/>
+    <path d="M358 176L298 250L318 338L356 286L358 176Z" fill="url(#rightPlane)"/>
+    <path d="M210 250L256 382L234 270L210 250Z" fill="url(#leftPlane)"/>
+    <path d="M302 250L256 382L278 270L302 250Z" fill="url(#rightPlane)"/>
+    <path d="M236 208L256 246L276 208L256 430L236 208Z" fill="url(#centerSpine)"/>
+    <path d="M150 312L214 382L256 462L204 408L150 312Z" fill="url(#leftPlane)"/>
+    <path d="M362 312L298 382L256 462L308 408L362 312Z" fill="url(#rightPlane)"/>
+    <path d="M184 210L230 232L194 336L160 286L184 210Z" fill="#05070A"/>
+    <path d="M328 210L282 232L318 336L352 286L328 210Z" fill="#05070A"/>
+    <circle cx="298" cy="238" r="11" fill="#25D6FF"/>
+  </g>
 </svg>

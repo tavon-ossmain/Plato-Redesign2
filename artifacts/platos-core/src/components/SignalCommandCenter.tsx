@@ -232,12 +232,18 @@ function SectionLabel({ children, t }: { children: React.ReactNode; t: T }) {
 
 function PlatosLogo({ t }: { t: T }) {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M12 2C8 2 5 5 5 9c0 2.5 1.2 4.7 3 6.1V18h8v-2.9c1.8-1.4 3-3.6 3-6.1C19 5 16 2 12 2z"
-        fill={t.c} opacity="0.9" />
-      <path d="M9 18h6v2a1 1 0 01-1 1h-4a1 1 0 01-1-1v-2z" fill={t.c} opacity="0.45" />
-      <path d="M3 9h2M19 9h2" stroke={t.c} strokeWidth="1.5" strokeLinecap="round" opacity="0.35" />
-    </svg>
+    <img
+      src="/platos-logo-master.png"
+      alt="Plato's"
+      height={36}
+      className="block shrink-0"
+      style={{
+        width: "auto",
+        height: 36,
+        objectFit: "contain",
+        filter: t.light ? "drop-shadow(0 1px 2px rgba(0,0,0,0.18))" : "drop-shadow(0 0 14px rgba(37,214,255,0.16))",
+      }}
+    />
   );
 }
 
@@ -823,7 +829,6 @@ export function SignalCommandCenter() {
           style={{ height: 50, borderColor: t.border, background: t.bar, boxShadow: t.light ? "0 1px 0 rgba(0,0,0,0.06)" : "0 1px 0 rgba(255,255,255,0.04)" }}>
           <div className="flex items-center gap-2">
             <PlatosLogo t={t} />
-            <span className="font-bold text-sm tracking-tight" style={{ color: t.text }}>Plato's</span>
             {mobileDetail && (
               <>
                 <span style={{ color: t.label }} className="mx-1 text-sm">/</span>
@@ -892,7 +897,6 @@ export function SignalCommandCenter() {
           }}>
           <div className="flex items-center gap-2.5">
             <PlatosLogo t={t} />
-            <span className="font-bold text-sm tracking-tight" style={{ color: t.text }}>Plato's</span>
             <span style={{ color: t.label }} className="mx-1.5 text-sm">/</span>
             <span className="text-sm font-medium" style={{ color: t.textSub }}>Signal Command Center</span>
           </div>
