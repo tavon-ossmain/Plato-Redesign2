@@ -10,6 +10,30 @@ interface Source {
   status: string;
 }
 
+interface ScraperJob {
+  id: number;
+  status: string;
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+}
+
+interface SourceConfig {
+  id: number;
+  workspaceId: string;
+  sourceType: string;
+  status: string;
+  keywords: string[];
+  disqualifiers: string[];
+  targetTitles: string[];
+  targetIndustries: string[];
+  companySizeRange: string | null;
+  confidenceThreshold: number;
+  dailyLimit: number;
+  runFrequency: string;
+  createdFrom: string;
+  jobs: ScraperJob[];
+}
+
 interface Workspace {
   id: string;
   name: string;
@@ -31,6 +55,7 @@ interface Workspace {
     modelUsed: string;
   } | null;
   sources: Source[];
+  sourceConfigs: SourceConfig[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -55,15 +80,153 @@ function fmtDate(iso: string | null) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+const SOURCE_DISPLAY: Record<string, string> = {
+  linkedin:  "LinkedIn",
+  reddit:    "Reddit",
+  g2:        "G2 Reviews",
+  jobboards: "Job Boards",
+  web:       "Web Scrape",
+};
+
+const SOURCE_CONFIG_STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  active:          { bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.30)",  text: "#34d399" },
+  preview_paused:  { bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.30)",  text: "#f59e0b" },
+  paused:          { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.30)",   text: "#ef4444" },
+  disabled:        { bg: "rgba(90,90,120,0.12)",   border: "rgba(90,90,120,0.30)",   text: "#5a5a78" },
+};
+
+// ── Source config card ─────────────────────────────────────────────
+function SourceConfigCard({
+  config,
+  onSave,
+}: {
+  config: SourceConfig;
+  onSave: (id: number, patch: Record<string, unknown>) => Promise<void>;
+}) {
+  const [dailyLimit, setDailyLimit]   = useState(String(config.dailyLimit));
+  const [threshold, setThreshold]     = useState(String(Math.round(config.confidenceThreshold * 100)));
+  const [saving, setSaving]           = useState(false);
+  const [saved, setSaved]             = useState(false);
+  const [expanded, setExpanded]       = useState(false);
+
+  const statusColor = SOURCE_CONFIG_STATUS_COLORS[config.status] ?? SOURCE_CONFIG_STATUS_COLORS.preview_paused;
+  const label       = SOURCE_DISPLAY[config.sourceType] ?? config.sourceType;
+  const job         = config.jobs[0];
+
+  const inputStyle: React.CSSProperties = {
+    background: "#07070e", border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 5, color: "#e8eaf0", padding: "5px 8px",
+    fontSize: 11, outline: "none", width: "100%",
+  };
+
+  async function handleSave() {
+    setSaving(true);
+    await onSave(config.id, {
+      dailyLimit:          parseInt(dailyLimit, 10) || config.dailyLimit,
+      confidenceThreshold: (parseInt(threshold, 10) || Math.round(config.confidenceThreshold * 100)) / 100,
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function toggleEnabled() {
+    const next = config.status === "disabled" ? "preview_paused" : "disabled";
+    await onSave(config.id, { status: next });
+  }
+
+  return (
+    <div className="rounded-lg overflow-hidden"
+      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="flex items-center justify-between px-3 py-2 cursor-pointer"
+        onClick={() => setExpanded((v) => !v)}>
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-semibold" style={{ color: "#f4f4f6" }}>{label}</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full"
+            style={{ background: statusColor.bg, border: `1px solid ${statusColor.border}`, color: statusColor.text }}>
+            {config.status.replace("_", " ")}
+          </span>
+          {job && (
+            <span className="text-[9px]" style={{ color: "#5a5a78" }}>
+              job: {job.status}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); void toggleEnabled(); }}
+            className="text-[10px] px-2 py-0.5 rounded transition-all"
+            style={{
+              background: config.status === "disabled" ? "rgba(52,211,153,0.08)" : "rgba(239,68,68,0.08)",
+              border: `1px solid ${config.status === "disabled" ? "rgba(52,211,153,0.22)" : "rgba(239,68,68,0.22)"}`,
+              color: config.status === "disabled" ? "#34d399" : "#ef4444",
+            }}>
+            {config.status === "disabled" ? "Enable" : "Disable"}
+          </button>
+          <span style={{ color: "#5a5a78", fontSize: 10 }}>{expanded ? "▲" : "▼"}</span>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="px-3 pb-3 flex flex-col gap-2.5"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <div className="grid grid-cols-2 gap-2 pt-2.5">
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#5a5a78" }}>Daily Limit</p>
+              <input type="number" value={dailyLimit} onChange={(e) => setDailyLimit(e.target.value)}
+                style={inputStyle} min={1} max={1000} />
+            </div>
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#5a5a78" }}>Min Confidence %</p>
+              <input type="number" value={threshold} onChange={(e) => setThreshold(e.target.value)}
+                style={inputStyle} min={0} max={100} />
+            </div>
+          </div>
+
+          {config.keywords.length > 0 && (
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#5a5a78" }}>Keywords ({config.keywords.length})</p>
+              <div className="flex flex-wrap gap-1">
+                {config.keywords.slice(0, 6).map((k) => (
+                  <span key={k} className="text-[10px] px-1.5 py-0.5 rounded"
+                    style={{ background: "rgba(6,208,228,0.06)", border: "1px solid rgba(6,208,228,0.14)", color: "#06d0e4" }}>
+                    {k}
+                  </span>
+                ))}
+                {config.keywords.length > 6 && (
+                  <span className="text-[10px]" style={{ color: "#5a5a78" }}>+{config.keywords.length - 6} more</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          <button onClick={handleSave} disabled={saving}
+            className="w-full py-1.5 rounded text-[11px] font-semibold transition-all"
+            style={{
+              background: saved ? "rgba(52,211,153,0.10)" : "rgba(6,208,228,0.08)",
+              border: `1px solid ${saved ? "rgba(52,211,153,0.28)" : "rgba(6,208,228,0.20)"}`,
+              color: saved ? "#34d399" : "#06d0e4",
+              opacity: saving ? 0.6 : 1,
+            }}>
+            {saving ? "Saving…" : saved ? "✓ Saved" : "Save source settings"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Edit drawer for a single workspace ───────────────────────────
 function WorkspaceDrawer({
   ws,
   onClose,
   onSave,
+  onSaveSourceConfig,
 }: {
   ws: Workspace;
   onClose: () => void;
   onSave: (id: string, patch: Record<string, unknown>) => Promise<void>;
+  onSaveSourceConfig: (id: number, patch: Record<string, unknown>) => Promise<void>;
 }) {
   const [form, setForm] = useState({
     status:          ws.status,
@@ -227,6 +390,24 @@ function WorkspaceDrawer({
               style={{ ...inputStyle, resize: "vertical" }} />
           </div>
 
+          {/* Source configs */}
+          {ws.sourceConfigs.length > 0 && (
+            <div>
+              <label style={{ ...labelStyle, marginBottom: 8 }}>
+                Signal Sources ({ws.sourceConfigs.length})
+              </label>
+              <div className="flex flex-col gap-2">
+                {ws.sourceConfigs.map((cfg) => (
+                  <SourceConfigCard
+                    key={cfg.id}
+                    config={cfg}
+                    onSave={onSaveSourceConfig}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Metadata */}
           <div className="rounded-lg p-3 flex flex-col gap-1.5"
             style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -293,8 +474,23 @@ export function AdminPanel() {
       body: JSON.stringify(patch),
     });
     await load();
-    // Update selected workspace too
     setSelected((prev) => prev?.id === id ? { ...prev, ...patch } as Workspace : prev);
+  }
+
+  async function handleSaveSourceConfig(configId: number, patch: Record<string, unknown>) {
+    await fetch(`${baseUrl}/api/admin/source-configs/${configId}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    await load();
+    // Refresh selected workspace's sourceConfigs from the reloaded list
+    setSelected((prev) => {
+      if (!prev) return prev;
+      const fresh = workspaces.find((w) => w.id === prev.id);
+      return fresh ?? prev;
+    });
   }
 
   if (forbidden) {
@@ -434,6 +630,7 @@ export function AdminPanel() {
           ws={selected}
           onClose={() => setSelected(null)}
           onSave={handleSave}
+          onSaveSourceConfig={handleSaveSourceConfig}
         />
       )}
     </div>

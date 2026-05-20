@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod/v4";
-import { db, workspacesTable, workspaceSourcesTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { db, workspacesTable, workspaceSourcesTable, sourceConfigsTable, scraperJobsTable } from "@workspace/db";
 import { parseIcp } from "../lib/parseIcp";
 import { sendBriefConfirmation } from "../lib/email";
 
@@ -12,6 +13,15 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   g2:         "G2 Reviews",
   jobboards:  "Job Boards",
   webscrape:  "Web Scrape",
+};
+
+// Map source key → canonical source_type stored in source_configs
+const SOURCE_TYPE_MAP: Record<string, string> = {
+  linkedin:  "linkedin",
+  reddit:    "reddit",
+  g2:        "g2",
+  jobboards: "jobboards",
+  webscrape: "web",
 };
 
 const briefSchema = z.object({
@@ -34,8 +44,7 @@ router.post("/webhooks/brief", async (req, res, next) => {
     }
     const brief = result.data;
 
-    // Log receipt immediately — this fires before GPT/DB so every prospect
-    // is captured in the log even if downstream processing fails
+    // Log receipt immediately — captures every prospect before GPT/DB
     req.log.info(
       { company: brief.companyName, email: brief.contactEmail, sources: brief.signalSources },
       "Brief received",
@@ -75,12 +84,49 @@ router.post("/webhooks/brief", async (req, res, next) => {
       yield:  0,
       status: "healthy" as const,
     }));
-
     if (sourceRows.length > 0) {
-      await db
-        .insert(workspaceSourcesTable)
-        .values(sourceRows)
-        .onConflictDoNothing();
+      await db.insert(workspaceSourcesTable).values(sourceRows).onConflictDoNothing();
+    }
+
+    // Seed source_configs + scraper_jobs only on first creation
+    // (preserves any admin edits made after initial seeding)
+    const existingConfigs = await db
+      .select({ id: sourceConfigsTable.id })
+      .from(sourceConfigsTable)
+      .where(eq(sourceConfigsTable.workspaceId, workspaceId));
+
+    if (existingConfigs.length === 0 && icpConfig.signalSources.length > 0) {
+      const confidenceThreshold = icpConfig.confidence >= 0.85 ? 0.75 : 0.65;
+
+      const configRows = icpConfig.signalSources.map((src: string) => ({
+        workspaceId,
+        sourceType:          SOURCE_TYPE_MAP[src] ?? src,
+        keywords:            icpConfig.keywords,
+        disqualifiers:       icpConfig.disqualifiers,
+        targetTitles:        [] as string[],
+        targetIndustries:    [] as string[],
+        confidenceThreshold,
+        dailyLimit:          50,
+        createdFrom:         "brief_ai" as const,
+      }));
+
+      const insertedConfigs = await db
+        .insert(sourceConfigsTable)
+        .values(configRows)
+        .returning({
+          id:         sourceConfigsTable.id,
+          sourceType: sourceConfigsTable.sourceType,
+        });
+
+      if (insertedConfigs.length > 0) {
+        const jobRows = insertedConfigs.map((cfg) => ({
+          workspaceId,
+          sourceConfigId: cfg.id,
+          jobType:        `${cfg.sourceType}_scrape`,
+          status:         "paused" as const,
+        }));
+        await db.insert(scraperJobsTable).values(jobRows);
+      }
     }
 
     req.log.info(
@@ -88,11 +134,8 @@ router.post("/webhooks/brief", async (req, res, next) => {
       "Brief processed",
     );
 
-    // Send confirmation email — fire and forget (non-blocking)
-    sendBriefConfirmation({
-      to:          brief.contactEmail,
-      companyName: brief.companyName,
-    });
+    // Send confirmation email — fire and forget
+    sendBriefConfirmation({ to: brief.contactEmail, companyName: brief.companyName });
 
     res.status(201).json({
       workspaceId,
@@ -100,7 +143,6 @@ router.post("/webhooks/brief", async (req, res, next) => {
       icpConfig,
     });
   } catch (err) {
-    // Log who submitted so we can follow up manually if Core failed
     req.log.error(
       { company: req.body?.companyName, email: req.body?.contactEmail, err },
       "Brief processing failed",

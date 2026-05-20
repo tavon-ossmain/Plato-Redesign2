@@ -295,6 +295,235 @@ You received this because you created a Plato's Core workspace preview.
 `;
 }
 
+// ── Activation email ─────────────────────────────────────────────
+
+export function buildActivationEmail({
+  companyName,
+  appUrl,
+  sources,
+}: {
+  companyName: string;
+  appUrl: string;
+  sources: string[];
+}): string {
+  const sourceList = sources.length > 0
+    ? sources.join(" · ")
+    : "configured sources";
+
+  return `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Your signal workspace is live</title>
+</head>
+<body style="margin:0;padding:0;background:#05060A;-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#05060A;">
+    Signal sourcing is now active. Your first signals are on the way.
+    &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#05060A;padding:40px 16px 56px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+        style="max-width:560px;width:100%;background:#0B0D13;border:1px solid rgba(255,255,255,0.12);border-radius:22px;overflow:hidden;">
+
+        <tr>
+          <td style="padding:32px 36px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <img src="${LOGO_URL}" alt="Plato's Strix" width="260"
+              style="max-width:260px;height:auto;display:block;margin-bottom:20px;border:0;" onerror="this.style.display='none'" />
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
+              <tr>
+                <td style="background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.28);border-radius:100px;padding:4px 12px;">
+                  <span style="font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;color:#34D399;">
+                    ● &nbsp;Workspace Activated
+                  </span>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0;font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#25D6FF;">
+              Plato's Core
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:32px 36px 0;">
+            <h1 style="margin:0 0 14px;font-family:Inter,system-ui,sans-serif;font-size:26px;font-weight:700;line-height:1.25;color:#F8FAFC;">
+              You're live. Signal delivery is starting.
+            </h1>
+            <p style="margin:0 0 20px;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.7;color:#CBD5E1;">
+              Your workspace for <strong style="color:#F8FAFC;">${companyName}</strong> has been activated.
+              Signal sourcing is now running across <strong style="color:#F8FAFC;">${sourceList}</strong>.
+              Scored, de-duped signals will appear in your queue as they're detected.
+            </p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+              <tr>
+                <td style="background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.18);border-left:3px solid rgba(52,211,153,0.50);border-radius:0 10px 10px 0;padding:14px 18px;">
+                  <p style="margin:0;font-family:Inter,system-ui,sans-serif;font-size:13px;line-height:1.65;color:#94A3B8;">
+                    <strong style="color:#CBD5E1;">What's now active:</strong>
+                    live signal sourcing, full opportunity details, contact intelligence, and delivery via your configured channels.
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;">
+              <tr>
+                <td align="center">
+                  <a href="${appUrl}"
+                    style="display:block;font-family:Inter,system-ui,sans-serif;font-size:15px;font-weight:700;color:#FFFFFF;background:#059669;text-decoration:none;padding:15px 24px;border-radius:12px;text-align:center;">
+                    Open Signal Workspace →
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:20px 36px 28px;border-top:1px solid rgba(255,255,255,0.06);">
+            <p style="margin:0 0 2px;font-family:Inter,system-ui,sans-serif;font-size:13px;font-weight:600;color:#475569;">Plato's Agency</p>
+            <p style="margin:0 0 6px;font-family:Inter,system-ui,sans-serif;font-size:12px;color:#334155;">Signal-aware lead intelligence for sales teams.</p>
+            <a href="mailto:hello@platos.agency" style="font-family:Inter,system-ui,sans-serif;font-size:12px;color:#25D6FF;text-decoration:none;">hello@platos.agency</a>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function buildActivationEmailText({
+  companyName,
+  appUrl,
+  sources,
+}: {
+  companyName: string;
+  appUrl: string;
+  sources: string[];
+}): string {
+  return `PLATO'S CORE — Workspace Activated
+=====================================
+
+You're live. Signal delivery is starting.
+
+Your workspace for ${companyName} has been activated.
+Signal sourcing is now running across: ${sources.join(", ") || "your configured sources"}.
+
+Open your signal workspace:
+${appUrl}
+
+---
+Plato's Agency · hello@platos.agency
+`;
+}
+
+export async function sendActivationEmail({
+  to,
+  companyName,
+  sources,
+}: {
+  to: string;
+  companyName: string;
+  sources: string[];
+}) {
+  if (!process.env.RESEND_API_KEY) {
+    logger.warn({ to }, "RESEND_API_KEY not set — skipping activation email");
+    return;
+  }
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  try {
+    const { data, error } = await resend.emails.send({
+      from:    FROM,
+      to:      [to],
+      subject: `You're live — signal delivery is starting for ${companyName}`,
+      html:    buildActivationEmail({ companyName, appUrl: `${APP_URL}/app`, sources }),
+      text:    buildActivationEmailText({ companyName, appUrl: `${APP_URL}/app`, sources }),
+    });
+    if (error) {
+      logger.warn({ error, to }, "Activation email delivery error");
+    } else {
+      logger.info({ emailId: data?.id, to }, "Activation email sent");
+    }
+  } catch (err) {
+    logger.warn({ err, to }, "Failed to send activation email");
+  }
+}
+
+// ── Internal Slack ping on activation ────────────────────────────
+
+export async function sendAdminSlackActivation({
+  workspaceName,
+  ownerEmail,
+  plan,
+  quota,
+  sources,
+  deliveryMode,
+}: {
+  workspaceName: string;
+  ownerEmail: string | null;
+  plan: string;
+  quota: number;
+  sources: string[];
+  deliveryMode: string;
+}) {
+  const url = process.env.ADMIN_SLACK_WEBHOOK_URL;
+  if (!url) {
+    logger.warn("ADMIN_SLACK_WEBHOOK_URL not set — skipping Slack ping");
+    return;
+  }
+  try {
+    const adminUrl = `${APP_URL}/admin`;
+    const modeLabel = deliveryMode === "managed" ? "STRIX Managed" : "DIY";
+    const payload = {
+      text: `🚀 Workspace activated: ${workspaceName}`,
+      blocks: [
+        {
+          type: "header",
+          text: { type: "plain_text", text: "🚀 Workspace Activated", emoji: true },
+        },
+        {
+          type: "section",
+          fields: [
+            { type: "mrkdwn", text: `*Company*\n${workspaceName}` },
+            { type: "mrkdwn", text: `*Owner*\n${ownerEmail ?? "—"}` },
+            { type: "mrkdwn", text: `*Plan*\n${plan}` },
+            { type: "mrkdwn", text: `*Weekly Quota*\n${quota} signals` },
+            { type: "mrkdwn", text: `*Delivery*\n${modeLabel}` },
+            { type: "mrkdwn", text: `*Sources*\n${sources.join(", ") || "—"}` },
+          ],
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: { type: "plain_text", text: "Open Admin Panel", emoji: true },
+              url: adminUrl,
+              style: "primary",
+            },
+          ],
+        },
+      ],
+    };
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      logger.warn({ status: resp.status }, "Slack activation ping failed");
+    } else {
+      logger.info("Slack activation ping sent");
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to send Slack activation ping");
+  }
+}
+
 // ── Sender ────────────────────────────────────────────────────────
 
 export async function sendBriefConfirmation({

@@ -2,8 +2,15 @@ import { Router } from "express";
 import { z } from "zod/v4";
 import { desc, eq } from "drizzle-orm";
 import { clerkClient } from "@clerk/express";
-import { db, workspacesTable, workspaceSourcesTable } from "@workspace/db";
+import {
+  db,
+  workspacesTable,
+  workspaceSourcesTable,
+  sourceConfigsTable,
+  scraperJobsTable,
+} from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
+import { sendActivationEmail, sendAdminSlackActivation } from "../lib/email";
 import type { Request, Response, NextFunction } from "express";
 
 const router = Router();
@@ -11,6 +18,14 @@ const router = Router();
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "tavon@platos.agency")
   .split(",")
   .map((e) => e.trim().toLowerCase());
+
+const SOURCE_DISPLAY_NAMES: Record<string, string> = {
+  linkedin:  "LinkedIn",
+  reddit:    "Reddit",
+  g2:        "G2 Reviews",
+  jobboards: "Job Boards",
+  web:       "Web Scrape",
+};
 
 async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   requireAuth(req, res, async () => {
@@ -34,19 +49,23 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   });
 }
 
-// GET /api/admin/workspaces — all workspaces + their sources
+// GET /api/admin/workspaces — all workspaces with sources, source configs, and scraper jobs
 router.get("/admin/workspaces", requireAdmin, async (req, res, next) => {
   try {
-    const workspaces = await db
-      .select()
-      .from(workspacesTable)
-      .orderBy(desc(workspacesTable.createdAt));
-
-    const sources = await db.select().from(workspaceSourcesTable);
+    const workspaces    = await db.select().from(workspacesTable).orderBy(desc(workspacesTable.createdAt));
+    const sources       = await db.select().from(workspaceSourcesTable);
+    const sourceConfigs = await db.select().from(sourceConfigsTable);
+    const scraperJobs   = await db.select().from(scraperJobsTable);
 
     const result = workspaces.map((ws) => ({
       ...ws,
       sources: sources.filter((s) => s.workspaceId === ws.id),
+      sourceConfigs: sourceConfigs
+        .filter((c) => c.workspaceId === ws.id)
+        .map((c) => ({
+          ...c,
+          jobs: scraperJobs.filter((j) => j.sourceConfigId === c.id),
+        })),
     }));
 
     res.json(result);
@@ -55,8 +74,8 @@ router.get("/admin/workspaces", requireAdmin, async (req, res, next) => {
   }
 });
 
-// PATCH /api/admin/workspaces/:id — update any editable field
-const patchSchema = z.object({
+// PATCH /api/admin/workspaces/:id — update workspace + cascade on activation
+const patchWorkspaceSchema = z.object({
   status:          z.enum(["preview", "active", "paused"]).optional(),
   plan:            z.string().min(1).optional(),
   quota:           z.number().int().positive().optional(),
@@ -68,13 +87,13 @@ const patchSchema = z.object({
 
 router.patch("/admin/workspaces/:id", requireAdmin, async (req, res, next) => {
   try {
-    const parsed = patchSchema.safeParse(req.body);
+    const parsed = patchWorkspaceSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid payload", details: parsed.error.issues });
       return;
     }
 
-    const id = req.params["id"] as string;
+    const id    = req.params["id"] as string;
     const patch = parsed.data;
 
     const set: Record<string, unknown> = { updatedAt: new Date() };
@@ -86,18 +105,112 @@ router.patch("/admin/workspaces/:id", requireAdmin, async (req, res, next) => {
     if (patch.deliveryEmail !== undefined)   set.deliveryEmail    = patch.deliveryEmail   || null;
     if (patch.adminNotes !== undefined)      set.adminNotes       = patch.adminNotes;
 
-    // Record activation timestamp on first activation
-    if (patch.status === "active") {
-      const [current] = await db
-        .select({ activatedAt: workspacesTable.activatedAt })
-        .from(workspacesTable)
-        .where(eq(workspacesTable.id, id));
-      if (current && !current.activatedAt) set.activatedAt = new Date();
+    // Fetch current workspace for cascade + notification data
+    const [current] = await db
+      .select()
+      .from(workspacesTable)
+      .where(eq(workspacesTable.id, id));
+
+    if (!current) {
+      res.status(404).json({ error: "Workspace not found" });
+      return;
+    }
+
+    // On first activation: record timestamp + cascade source configs + scraper jobs
+    if (patch.status === "active" && current.status !== "active") {
+      if (!current.activatedAt) set.activatedAt = new Date();
+
+      // Flip preview_paused → active for all source configs
+      await db
+        .update(sourceConfigsTable)
+        .set({ status: "active", updatedAt: new Date() })
+        .where(eq(sourceConfigsTable.workspaceId, id));
+
+      // Flip paused → queued for all scraper jobs, set next_run_at = now
+      await db
+        .update(scraperJobsTable)
+        .set({ status: "queued", nextRunAt: new Date(), updatedAt: new Date() })
+        .where(eq(scraperJobsTable.workspaceId, id));
+
+      req.log.info({ workspaceId: id }, "Activation cascade: source configs + scraper jobs queued");
+
+      // Fetch source configs for notification
+      const configs = await db
+        .select({ sourceType: sourceConfigsTable.sourceType })
+        .from(sourceConfigsTable)
+        .where(eq(sourceConfigsTable.workspaceId, id));
+      const sourceNames = configs.map((c) =>
+        SOURCE_DISPLAY_NAMES[c.sourceType] ?? c.sourceType
+      );
+
+      const deliveryMode = (patch.deliveryMode ?? current.deliveryMode) as string;
+
+      // Fire notifications non-blocking — activation succeeds regardless
+      if (current.ownerEmail) {
+        sendActivationEmail({
+          to:          current.ownerEmail,
+          companyName: current.name,
+          sources:     sourceNames,
+        }).catch((err: unknown) => req.log.warn({ err }, "Activation email failed silently"));
+      }
+
+      sendAdminSlackActivation({
+        workspaceName: current.name,
+        ownerEmail:    current.ownerEmail,
+        plan:          patch.plan ?? current.plan,
+        quota:         patch.quota ?? current.quota,
+        sources:       sourceNames,
+        deliveryMode,
+      }).catch((err: unknown) => req.log.warn({ err }, "Slack ping failed silently"));
     }
 
     await db.update(workspacesTable).set(set).where(eq(workspacesTable.id, id));
 
     req.log.info({ workspaceId: id, patch }, "Admin patched workspace");
+    res.json({ id, ...set });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/source-configs/:id — edit individual source config
+const patchSourceConfigSchema = z.object({
+  status:              z.enum(["preview_paused", "active", "paused", "disabled"]).optional(),
+  dailyLimit:          z.number().int().min(1).max(10000).optional(),
+  confidenceThreshold: z.number().min(0).max(1).optional(),
+  keywords:            z.array(z.string()).optional(),
+  disqualifiers:       z.array(z.string()).optional(),
+  targetTitles:        z.array(z.string()).optional(),
+  targetIndustries:    z.array(z.string()).optional(),
+  companySizeRange:    z.string().optional(),
+  runFrequency:        z.enum(["hourly", "daily", "weekly"]).optional(),
+});
+
+router.patch("/admin/source-configs/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const parsed = patchSourceConfigSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid payload", details: parsed.error.issues });
+      return;
+    }
+
+    const id    = parseInt(req.params["id"] as string, 10);
+    const patch = parsed.data;
+
+    const set: Record<string, unknown> = { updatedAt: new Date() };
+    if (patch.status              !== undefined) set.status              = patch.status;
+    if (patch.dailyLimit          !== undefined) set.dailyLimit          = patch.dailyLimit;
+    if (patch.confidenceThreshold !== undefined) set.confidenceThreshold = patch.confidenceThreshold;
+    if (patch.keywords            !== undefined) set.keywords            = patch.keywords;
+    if (patch.disqualifiers       !== undefined) set.disqualifiers       = patch.disqualifiers;
+    if (patch.targetTitles        !== undefined) set.targetTitles        = patch.targetTitles;
+    if (patch.targetIndustries    !== undefined) set.targetIndustries    = patch.targetIndustries;
+    if (patch.companySizeRange    !== undefined) set.companySizeRange    = patch.companySizeRange;
+    if (patch.runFrequency        !== undefined) set.runFrequency        = patch.runFrequency;
+
+    await db.update(sourceConfigsTable).set(set).where(eq(sourceConfigsTable.id, id));
+
+    req.log.info({ sourceConfigId: id, patch }, "Admin patched source config");
     res.json({ id, ...set });
   } catch (err) {
     next(err);

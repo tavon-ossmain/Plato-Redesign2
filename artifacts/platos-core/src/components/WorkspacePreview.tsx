@@ -115,6 +115,64 @@ function ThemeToggle({ t, onToggle }: { t: T; onToggle: () => void }) {
   );
 }
 
+// ── Source config preview ─────────────────────────────────────────
+const SOURCE_META: Record<string, { label: string; daily: number; weekly: number; icon: string }> = {
+  linkedin:  { label: "LinkedIn",   daily: 30, weekly: 150, icon: "💼" },
+  reddit:    { label: "Reddit",     daily: 20, weekly: 100, icon: "📣" },
+  g2:        { label: "G2 Reviews", daily: 15, weekly:  75, icon: "⭐" },
+  jobboards: { label: "Job Boards", daily: 40, weekly: 200, icon: "📋" },
+  webscrape: { label: "Web Scrape", daily: 25, weekly: 125, icon: "🌐" },
+  web:       { label: "Web Scrape", daily: 25, weekly: 125, icon: "🌐" },
+};
+
+function SourceConfigSection({ sources, keywordCount, t }: {
+  sources: string[];
+  keywordCount: number;
+  t: T;
+}) {
+  if (sources.length === 0) return null;
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: t.label }}>
+        Source Configuration
+      </p>
+      <div className="flex flex-col gap-2">
+        {sources.map((src) => {
+          const meta = SOURCE_META[src] ?? { label: src, daily: 50, weekly: 250, icon: "📡" };
+          return (
+            <div key={src} className="rounded-lg px-2.5 py-2 flex flex-col gap-1.5"
+              style={{ background: t.inset, border: `1px solid ${t.borderCard}` }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12px]">{meta.icon}</span>
+                  <span className="text-[11px] font-semibold" style={{ color: t.text }}>{meta.label}</span>
+                </div>
+                <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full"
+                  style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.22)", color: "#f59e0b" }}>
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+                  </svg>
+                  Paused
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-[10px]" style={{ color: t.label }}>
+                <span>{keywordCount} keywords</span>
+                <span style={{ color: t.textFaint }}>·</span>
+                <span>~{meta.daily}/day</span>
+                <span style={{ color: t.textFaint }}>·</span>
+                <span>~{meta.weekly}/wk</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[10px] mt-2 leading-relaxed" style={{ color: t.label }}>
+        Activate to start live sourcing across all configured channels.
+      </p>
+    </div>
+  );
+}
+
 // ── ICP Panel ───────────────────────────────────────────────────
 function IcpPanel({ icp, t }: { icp: IcpConfig; t: T }) {
   const SOURCE_LABEL: Record<string, string> = {
@@ -219,6 +277,13 @@ function IcpPanel({ icp, t }: { icp: IcpConfig; t: T }) {
           </div>
         </div>
       )}
+
+      {/* Source config preview */}
+      <SourceConfigSection
+        sources={icp.signalSources}
+        keywordCount={icp.keywords.length}
+        t={t}
+      />
     </div>
   );
 }
