@@ -1,14 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
-  <!-- Hexagon signal icon -->
-  <polygon points="18,4 30,4 36,14 30,24 18,24 12,14" stroke="#06d0e4" stroke-width="2" fill="none"/>
-  <circle cx="24" cy="14" r="4" fill="#06d0e4"/>
-  <line x1="24" y1="10" x2="24" y2="6" stroke="#06d0e4" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="24" y1="18" x2="24" y2="22" stroke="#06d0e4" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="20.5" y1="12" x2="13.5" y2="8" stroke="#06d0e4" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="27.5" y1="16" x2="34.5" y2="20" stroke="#06d0e4" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="27.5" y1="12" x2="34.5" y2="8" stroke="#06d0e4" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="20.5" y1="16" x2="13.5" y2="20" stroke="#06d0e4" stroke-width="1.5" stroke-linecap="round"/>
-  <!-- Wordmark -->
-  <text x="44" y="10" font-family="Inter, system-ui, sans-serif" font-size="9" font-weight="600" fill="#06d0e4" letter-spacing="0.08em">PLATO'S CORE</text>
-  <text x="44" y="22" font-family="Inter, system-ui, sans-serif" font-size="7" font-weight="400" fill="#8892a4" letter-spacing="0.12em">SIGNAL COMMAND CENTER</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" fill="none">
+  <!-- Wing/feather mark — approximating platos.agency logo style -->
+  <g transform="translate(2, 4)">
+    <!-- Upper wing sweep -->
+    <path d="M4 22 C8 10, 20 4, 32 8 C22 10, 16 16, 14 24 Z" fill="#06d0e4" opacity="0.9"/>
+    <!-- Lower wing sweep -->
+    <path d="M4 22 C10 28, 22 34, 34 28 C24 28, 16 26, 14 24 Z" fill="#06d0e4" opacity="0.6"/>
+    <!-- Inner accent line -->
+    <path d="M14 24 C18 18, 26 14, 34 16" stroke="#06d0e4" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.5"/>
+    <!-- Stem -->
+    <line x1="4" y1="22" x2="14" y2="24" stroke="#06d0e4" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+  <!-- Wordmark: Plato's Core -->
+  <text x="44" y="22" font-family="Inter, Georgia, serif" font-size="15" font-weight="700" font-style="italic" fill="#ffffff" letter-spacing="-0.02em">Plato's</text>
+  <text x="44" y="38" font-family="Inter, system-ui, sans-serif" font-size="9" font-weight="400" fill="#06d0e4" letter-spacing="0.18em">CORE</text>
 </svg>

@@ -13,7 +13,6 @@ import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wo
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { SignalCommandCenter } from "@/components/SignalCommandCenter";
-import { LandingPage } from "@/pages/LandingPage";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -159,7 +158,7 @@ function HomeRedirect() {
         <Redirect to="/app" />
       </Show>
       <Show when="signed-out">
-        <LandingPage />
+        <Redirect to="/sign-in" />
       </Show>
     </>
   );
