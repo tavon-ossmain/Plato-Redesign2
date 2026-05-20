@@ -1,0 +1,116 @@
+Upgrade the /api/client-brief confirmation email into a production-grade branded Plato’s Core email that builds trust and drives the activation call.
+
+Context:
+Plato’s is a signal-aware lead intelligence system for SDR teams, SaaS sales teams, RevOps/GTM operators, and founder-led B2B teams. The user has just completed a brief on platos.agency. We create a Workspace Preview in Plato’s Core, but live sourcing and full workflow delivery require an activation call.
+
+Goal:
+The email should feel like a premium B2B SaaS onboarding email, not a generic confirmation. It should reassure the user that their workspace was created, make the preview feel valuable, and clearly push them to book activation.
+
+Trigger:
+After /api/client-brief successfully saves the brief and posts to Plato’s Core, send a confirmation email to contactEmail using Resend.
+
+Subject:
+Your Plato’s Core workspace preview is ready
+
+Preview text:
+We generated your signal workspace preview from your brief. Activate live sourcing when you’re ready.
+
+Logo:
+Use the real Plato’s logo in the email header.
+Use absolute URL:
+https://platos.agency/platos-logo-master.png
+Rules:
+- Max width: 160px
+- Height: auto
+- Preserve aspect ratio
+- Alt text: “Plato’s”
+- Do not use a placeholder icon
+- If logo fails, fallback text should read “Plato’s Core”
+
+Design:
+Use inline CSS only for email compatibility.
+Dark premium Plato’s visual style:
+- Page background: #05060A
+- Main card background: #0B0D13
+- Inner card background: rgba(255,255,255,0.04)
+- Border: rgba(255,255,255,0.12)
+- Accent cyan: #25D6FF
+- Purple CTA: #7C3AED
+- Green status accent: #34D399
+- Main text: #F8FAFC
+- Body text: #CBD5E1
+- Muted text: #94A3B8
+- Rounded corners around 22px
+- Spacious padding
+- Mobile responsive
+- Should look clean in Gmail and Outlook
+
+Email structure:
+
+1. Header
+- Plato’s logo
+- Small pill/status: “Workspace Preview Created”
+- Eyebrow: PLATO’S CORE
+
+2. Main headline
+“Your workspace preview is ready.”
+
+3. Personalized body
+“We used your brief to generate a starter signal workspace for [companyName]. Inside, you’ll see your normalized ICP, recommended signal sources, keywords, disqualifiers, and routing notes.”
+
+4. Trust/clarity note
+“This is a preview workspace. Live sourcing, full opportunities, contact info, CRM sync, Slack routing, and daily signal delivery unlock after activation.”
+
+5. Primary CTA
+Button text:
+“Open Workspace Preview”
+URL:
+Use signUpUrl returned by /api/client-brief.
+Button should be purple, high contrast, rounded, full-width on mobile.
+
+6. Secondary CTA
+Button/link text:
+“Book Activation Call”
+URL:
+https://calendly.com/platos-io/15min
+This should be visually secondary but still clear.
+
+7. “What happens next” section
+Use three numbered rows:
+1. Sign in with the same email you used in the brief.
+2. Review your ICP, sources, keywords, and routing plan.
+3. Book activation to turn on live sourcing and workflow delivery.
+
+8. “What unlocks after activation” section
+Show 5 compact trust bullets:
+- Live signal sourcing
+- Full opportunity details
+- Contact enrichment
+- CRM + Slack routing
+- Managed outreach options
+
+9. Footer
+Text:
+“Plato’s Agency”
+“Signal-aware lead intelligence for sales teams.”
+“hello@platos.agency”
+Add muted note:
+“You received this because you created a Plato’s Core workspace preview.”
+
+Copy tone:
+Clear, confident, premium, not hypey.
+Avoid saying they are getting full leads for free.
+Avoid overpromising.
+Make the activation call feel like the natural next step to turn on the system.
+
+Technical requirements:
+- Keep the current Resend API sending logic.
+- Move the email HTML into a helper function:
+  buildWorkspacePreviewEmail({ companyName, signUpUrl })
+- Add a text fallback:
+  buildWorkspacePreviewEmailText({ companyName, signUpUrl })
+- Include both html and text in resend.emails.send.
+- If RESEND_API_KEY is missing, skip email and do not fail submission.
+- If Resend fails, log the error and still return success for the brief.
+- Do not expose secrets in code.
+- Keep TypeScript clean and run npm run check after changes.

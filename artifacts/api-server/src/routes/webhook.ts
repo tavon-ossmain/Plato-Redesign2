@@ -82,8 +82,6 @@ router.post("/webhooks/brief", async (req, res, next) => {
     sendBriefConfirmation({
       to:          brief.contactEmail,
       companyName: brief.companyName,
-      workspaceId,
-      icpConfig,
     });
 
     res.status(201).json({
