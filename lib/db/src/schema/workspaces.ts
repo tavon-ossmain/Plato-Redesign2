@@ -15,6 +15,11 @@ export const workspacesTable = pgTable("workspaces", {
   staleSignals:         integer("stale_signals").notNull().default(0),
   icpConfig:            jsonb("icp_config").$type<IcpConfig>(),
   status:               text("status").notNull().default("preview"),
+  activatedAt:          timestamp("activated_at"),
+  deliveryMode:         text("delivery_mode").notNull().default("diy"),
+  slackWebhookUrl:      text("slack_webhook_url"),
+  deliveryEmail:        text("delivery_email"),
+  adminNotes:           text("admin_notes"),
   createdAt:            timestamp("created_at").notNull().defaultNow(),
   updatedAt:            timestamp("updated_at").notNull().defaultNow(),
 });

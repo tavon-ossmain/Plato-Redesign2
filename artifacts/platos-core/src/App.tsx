@@ -16,6 +16,7 @@ import { getGetMyWorkspaceQueryOptions } from "@workspace/api-client-react";
 import { SignalCommandCenter } from "@/components/SignalCommandCenter";
 import { WorkspacePreview } from "@/components/WorkspacePreview";
 import { WorkspaceEmptyState } from "@/components/WorkspaceEmptyState";
+import { AdminPanel } from "@/components/AdminPanel";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -252,6 +253,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route path="/app" component={AppPage} />
+          <Route path="/admin" component={AdminPanel} />
           <Route>
             <Redirect to="/" />
           </Route>
