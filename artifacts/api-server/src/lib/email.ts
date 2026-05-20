@@ -62,8 +62,8 @@ export function buildWorkspacePreviewEmail({
                 <tr>
                   <td>
                     <!-- Logo -->
-                    <img src="${LOGO_URL}" alt="Plato's" width="160"
-                      style="max-width:160px;height:auto;display:block;margin-bottom:20px;border:0;"
+                    <img src="${LOGO_URL}" alt="Plato's Strix" width="260"
+                      style="max-width:260px;height:auto;display:block;margin-bottom:20px;border:0;"
                       onerror="this.style.display='none'" />
                     <!-- Status pill -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
