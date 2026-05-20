@@ -42,3 +42,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 APP_URL = "https://plato-redesign.replit.app"
+RESEND_FROM_EMAIL = "Plato's <hello@platos.agency>"
