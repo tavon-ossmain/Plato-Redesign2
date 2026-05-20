@@ -50,7 +50,8 @@ Dashboard `billableOpportunities` and `intentUpdates` are derived live with COUN
 - Contract-first API: OpenAPI spec is written by hand → Orval generates typed hooks. Never edit generated files.
 - Dashboard stats are a mix: live counts from signals table + ingestion counters stored on the workspaces row (rawScanned, uniqueAccounts, etc.)
 - Seed script uses `ON CONFLICT DO NOTHING` so it's safe to re-run without duplicating data
-- No auth yet — all routes are public. Next step is Clerk auth gating
+- Auth: Clerk (Replit-managed). All `/api` routes require a valid Clerk session — unauthenticated requests return 401. `requireAuth` middleware lives in `artifacts/api-server/src/middlewares/requireAuth.ts`.
+- Frontend routing: Wouter with `base={basePath}`. Routes: `/` (landing/redirect), `/sign-in/*?`, `/sign-up/*?`, `/app` (gated). `ClerkProvider` wraps all routes in `App.tsx`.
 - In-memory state is gone: assign and feedback mutations now persist to Postgres and survive server restarts
 
 ## Product

@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { eq, and, count, sql } from "drizzle-orm";
 import { db, workspacesTable, signalsTable, workspaceSourcesTable } from "@workspace/db";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
+router.use(requireAuth);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
