@@ -5,6 +5,7 @@
  * Plato's Core — Signal Command Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { CostGuard } from './costGuard';
 import type { SourceHealth } from './sourceHealth';
 
 export interface Dashboard {
@@ -16,5 +17,15 @@ export interface Dashboard {
   intentUpdates: number;
   quota: number;
   used: number;
+  deliveredToday: number;
+  weeklyTargetMin: number;
+  weeklyTargetMax: number;
+  rolledOver: number;
+  /** @nullable */
+  noLeadReason: string | null;
+  workspaceName?: string;
+  primaryCrm?: string;
+  deliveryMode?: string;
+  costGuard: CostGuard;
   sources: SourceHealth[];
 }

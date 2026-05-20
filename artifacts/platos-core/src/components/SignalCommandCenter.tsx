@@ -9,6 +9,7 @@ import {
   useGetWorkspaceDashboard,
   useGetWorkspacePipeline,
   useAssignOpportunity,
+  useStartOutreach,
   useSubmitFeedback,
   getGetWorkspacePipelineQueryKey,
 } from "@workspace/api-client-react";
@@ -189,6 +190,7 @@ interface Signal {
   id: string;
   company: string;
   contact: { name: string; title: string; linkedin: string };
+  accountDomain: string;
   source: string;
   sourcePlatform: string;
   sourceUrl: string;
@@ -200,13 +202,21 @@ interface Signal {
   seenAt: string;
   lastVerifiedAt: string;
   disposition: string;
+  billingReason: string;
   recommendedChannel: string;
   owner: string;
   route: string;
+  actionStatus: string;
   crmStatus: string;
+  crmRecordId: string | null;
   dedupeStatus: string;
+  duplicateOf: string | null;
+  territory: string;
   modelPath: string;
+  modelTier: string;
   rawSource: string;
+  nextAction: string;
+  outreachDraft: string;
   feedback?: string | null;
 }
 
@@ -413,11 +423,11 @@ function StatRow({ label, val, hi, t }: { label: string; val: string; hi: boolea
 // ── Mobile Detail ───────────────────────────────────────────────
 function MobileDetail({
   sig, isRouted, feedbackKey, done,
-  onRoute, onFeedback, onBack, isAssigning, t,
+  onRoute, onStartOutreach, onFeedback, onBack, isAssigning, isStartingOutreach, isOutreachQueued, t,
 }: {
   sig: Signal; isRouted: boolean; feedbackKey: string | null; done: Set<string>;
-  onRoute: () => void; onFeedback: (key: string) => void;
-  onBack: () => void; isAssigning: boolean; t: T;
+  onRoute: () => void; onStartOutreach: () => void; onFeedback: (key: string) => void;
+  onBack: () => void; isAssigning: boolean; isStartingOutreach: boolean; isOutreachQueued: boolean; t: T;
 }) {
   const routedBadgeBg     = t.light ? "rgba(5,150,105,0.09)"  : "rgba(52,211,153,0.10)";
   const routedBadgeBorder = t.light ? "rgba(5,150,105,0.22)"  : "rgba(52,211,153,0.25)";
@@ -489,6 +499,12 @@ function MobileDetail({
             style={{ background: t.inset, border: `1px solid ${t.borderCard}`, borderRadius: R, boxShadow: t.shadowSm }}>
             <SectionLabel t={t}>Why Now</SectionLabel>
             <p className="text-sm leading-relaxed" style={{ color: t.textSub }}>{sig.whyNow}</p>
+          </div>
+
+          <div className="mb-4 p-3.5"
+            style={{ background: t.inset, border: `1px solid ${t.borderCard}`, borderRadius: R, boxShadow: t.shadowSm }}>
+            <SectionLabel t={t}>Billing Rule</SectionLabel>
+            <p className="text-sm leading-relaxed" style={{ color: t.textSub }}>{sig.billingReason}</p>
           </div>
 
           {/* Scores */}
@@ -565,8 +581,10 @@ function MobileDetail({
         </button>
         <div className="flex gap-2">
           <button className="flex-1 py-3 text-sm font-medium"
+            onClick={onStartOutreach}
+            disabled={isStartingOutreach || isOutreachQueued || sig.dedupeStatus === "duplicate"}
             style={{ background: t.cDim, border: `1px solid ${t.cEdge}`, color: t.c, borderRadius: R, opacity: 0.85 }}>
-            Start Outreach
+            {isOutreachQueued ? "Outreach Queued" : "Start Outreach"}
           </button>
           <a href={sig.sourceUrl} target="_blank" rel="noopener noreferrer"
             className="flex-1 py-3 text-sm font-medium text-center"
@@ -714,10 +732,12 @@ export function SignalCommandCenter() {
   const { data: rawSignals, isLoading: pipelineLoading, isError: pipelineError } = useGetWorkspacePipeline(WORKSPACE_ID);
 
   const assignMutation   = useAssignOpportunity();
+  const outreachMutation = useStartOutreach();
   const feedbackMutation = useSubmitFeedback();
 
   const [isLight,           setIsLight]           = useState(false);
   const [routedOverrides,   setRoutedOverrides]   = useState<Record<string, boolean>>({});
+  const [outreachOverrides, setOutreachOverrides] = useState<Record<string, boolean>>({});
   const [feedbackOverrides, setFeedbackOverrides] = useState<Record<string, string>>({});
   const [filter,            setFilter]            = useState<string | null>(null);
   const [mobileDetail,      setMobileDetail]      = useState<Signal | null>(null);
@@ -739,6 +759,7 @@ export function SignalCommandCenter() {
   ];
 
   function getIsRouted(sig: Signal) { return routedOverrides[sig.id] ?? sig.route === "routed"; }
+  function getIsOutreachQueued(sig: Signal) { return outreachOverrides[sig.id] ?? sig.actionStatus === "outreach_queued"; }
   function getFeedbackKey(sig: Signal): string | null { return feedbackOverrides[sig.id] ?? sig.feedback ?? null; }
 
   function handleRoute(sig: Signal) {
@@ -757,6 +778,16 @@ export function SignalCommandCenter() {
     );
   }
 
+  function handleStartOutreach(sig: Signal) {
+    if (sig.dedupeStatus === "duplicate" || sig.disposition === "suppressed") return;
+    setOutreachOverrides((p) => ({ ...p, [sig.id]: true }));
+    setRoutedOverrides((p) => ({ ...p, [sig.id]: true }));
+    outreachMutation.mutate(
+      { workspaceId: WORKSPACE_ID, opportunityId: sig.id },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetWorkspacePipelineQueryKey(WORKSPACE_ID) }) },
+    );
+  }
+
   function getDoneSet(sig: Signal | null): Set<string> {
     const d = new Set<string>(["captured", "verified", "crm", "model"]);
     if (sig && getIsRouted(sig)) d.add("routed");
@@ -764,7 +795,13 @@ export function SignalCommandCenter() {
     return d;
   }
 
-  const ws = { name: "Acme Corp", quota: dashboard?.quota ?? 200, used: dashboard?.used ?? 0 };
+  const ws = {
+    name: dashboard?.workspaceName ?? "Acme Corp",
+    quota: dashboard?.quota ?? 200,
+    used: dashboard?.used ?? 0,
+    primaryCrm: dashboard?.primaryCrm ?? "HubSpot",
+    deliveryMode: dashboard?.deliveryMode ?? "DIY Signals",
+  };
   const quotaPct  = Math.round((ws.used / ws.quota) * 100);
   const quotaColor = t.light
     ? (quotaPct > 90 ? "#dc2626" : quotaPct > 70 ? "#ca8a04" : t.c)
@@ -816,9 +853,12 @@ export function SignalCommandCenter() {
               feedbackKey={getFeedbackKey(mobileDetail)}
               done={getDoneSet(mobileDetail)}
               onRoute={() => handleRoute(mobileDetail)}
+              onStartOutreach={() => handleStartOutreach(mobileDetail)}
               onFeedback={(key) => handleFeedback(mobileDetail, key)}
               onBack={() => setMobileDetail(null)}
               isAssigning={assignMutation.isPending}
+              isStartingOutreach={outreachMutation.isPending}
+              isOutreachQueued={getIsOutreachQueued(mobileDetail)}
               t={t}
             />
           ) : (
@@ -879,7 +919,9 @@ export function SignalCommandCenter() {
             <div className="px-4 py-4 border-b" style={{ borderColor: t.border }}>
               <SectionLabel t={t}>Workspace</SectionLabel>
               <div className="text-sm font-bold leading-tight" style={{ color: t.text }}>{ws.name}</div>
-              <div className="text-[10px] mt-0.5 font-medium" style={{ color: t.label }}>Growth plan</div>
+              <div className="text-[10px] mt-0.5 font-medium" style={{ color: t.label }}>
+                {ws.deliveryMode} · {ws.primaryCrm}
+              </div>
             </div>
 
             <div className="px-4 py-4 border-b" style={{ borderColor: t.border }}>
@@ -926,7 +968,20 @@ export function SignalCommandCenter() {
               <StatRow label="Billable Opps"    val={dashboard?.billableOpportunities?.toString() ?? "—"} hi={true}  t={t} />
               <StatRow label="Intent Updates"   val={dashboard?.intentUpdates?.toString() ?? "—"}          hi={false} t={t} />
               <StatRow label="Dupes Suppressed" val={dashboard?.duplicatesSuppressed?.toString() ?? "—"}  hi={false} t={t} />
+              <StatRow label="Stale Suppressed" val={dashboard?.staleSignals?.toString() ?? "—"}          hi={false} t={t} />
               <StatRow label="Raw Scanned"      val={dashboard?.rawScanned?.toLocaleString() ?? "—"}      hi={false} t={t} />
+            </div>
+
+            <div className="px-4 py-4 border-t" style={{ borderColor: t.border }}>
+              <SectionLabel t={t}>Cost Guard</SectionLabel>
+              <StatRow label="Mode" val={dashboard?.costGuard?.status ?? "—"} hi={true} t={t} />
+              <StatRow label="Default Model" val={dashboard?.costGuard?.defaultModel ?? "—"} hi={false} t={t} />
+              <StatRow
+                label="Week Spend"
+                val={dashboard?.costGuard ? `$${dashboard.costGuard.spentUsd.toFixed(0)} / $${dashboard.costGuard.weeklyBudgetUsd}` : "—"}
+                hi={false}
+                t={t}
+              />
             </div>
           </aside>
 
@@ -1024,6 +1079,12 @@ export function SignalCommandCenter() {
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-xs font-semibold truncate" style={{ color: isActive ? t.text : t.textSub }}>{sig.company}</span>
                           <span className="text-[10px] font-semibold shrink-0" style={{ color: m.text }}>{m.label}</span>
+                          {getIsOutreachQueued(sig) && (
+                            <span className="text-[9px] px-1.5 py-0.5 font-semibold shrink-0"
+                              style={{ background: t.cDim, border: `1px solid ${t.cEdge}`, color: t.c, borderRadius: 20 }}>
+                              Outreach
+                            </span>
+                          )}
                           {isRouted_ && (
                             <span className="text-[9px] px-1.5 py-0.5 font-semibold shrink-0"
                               style={{ background: routedBadgeBg, border: `1px solid ${routedBadgeBorder}`, color: routedBadgeText, borderRadius: 20, boxShadow: routedBadgeGlow }}>
@@ -1117,6 +1178,19 @@ export function SignalCommandCenter() {
                     <p className="text-xs leading-relaxed" style={{ color: t.textSub }}>{activeSig.whyNow}</p>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-2.5 mb-4">
+                    <div className="p-3.5"
+                      style={{ background: t.inset, border: `1px solid ${t.borderCard}`, borderRadius: R, boxShadow: t.shadowSm }}>
+                      <SectionLabel t={t}>Billing Rule</SectionLabel>
+                      <p className="text-xs leading-relaxed" style={{ color: t.textSub }}>{activeSig.billingReason}</p>
+                    </div>
+                    <div className="p-3.5"
+                      style={{ background: t.inset, border: `1px solid ${t.borderCard}`, borderRadius: R, boxShadow: t.shadowSm }}>
+                      <SectionLabel t={t}>Next Action</SectionLabel>
+                      <p className="text-xs leading-relaxed" style={{ color: t.textSub }}>{activeSig.nextAction}</p>
+                    </div>
+                  </div>
+
                   {/* Scores */}
                   <div className="grid grid-cols-3 gap-2.5 mb-4">
                     <ScoreKPI value={activeSig.fitScore}        label="Fit Score"  t={t} />
@@ -1140,6 +1214,20 @@ export function SignalCommandCenter() {
                         {getIsRouted(activeSig) && (
                           <span className="font-normal" style={{ color: t.light ? "#05966960" : "#34d39960" }}> · Routed</span>
                         )}
+                      </div>
+                    </div>
+                    <div className="p-3.5"
+                      style={{ background: t.inset, border: `1px solid ${t.borderCard}`, borderRadius: R, boxShadow: t.shadowSm }}>
+                      <SectionLabel t={t}>Dedupe / CRM</SectionLabel>
+                      <div className="text-xs font-medium" style={{ color: t.textSub }}>
+                        {activeSig.dedupeStatus.replace(/_/g, " ")} · {activeSig.crmRecordId ?? "No CRM match"}
+                      </div>
+                    </div>
+                    <div className="p-3.5"
+                      style={{ background: t.inset, border: `1px solid ${t.borderCard}`, borderRadius: R, boxShadow: t.shadowSm }}>
+                      <SectionLabel t={t}>Model Path</SectionLabel>
+                      <div className="text-xs font-medium" style={{ color: t.textSub }}>
+                        {activeSig.modelTier.replace(/_/g, " ")} · {activeSig.territory}
                       </div>
                     </div>
                   </div>
@@ -1174,9 +1262,18 @@ export function SignalCommandCenter() {
                   : "Route to Owner →"}
               </button>
               <div className="flex gap-2">
-                <button className="flex-1 px-3 py-2.5 text-xs font-semibold text-left"
-                  style={{ background: t.cDim, border: `1px solid ${t.cEdge}`, color: t.c, borderRadius: R, opacity: 0.85 }}>
-                  Start Outreach
+                <button
+                  className="flex-1 px-3 py-2.5 text-xs font-semibold text-left"
+                  onClick={() => activeSig && handleStartOutreach(activeSig)}
+                  disabled={!activeSig || outreachMutation.isPending || (activeSig?.dedupeStatus === "duplicate")}
+                  style={{
+                    background: t.cDim,
+                    border: `1px solid ${t.cEdge}`,
+                    color: t.c,
+                    borderRadius: R,
+                    opacity: !activeSig || outreachMutation.isPending || activeSig.dedupeStatus === "duplicate" ? 0.45 : 0.85,
+                  }}>
+                  {activeSig && getIsOutreachQueued(activeSig) ? "Outreach Queued" : "Start Outreach"}
                 </button>
                 {activeSig ? (
                   <a href={activeSig.sourceUrl} target="_blank" rel="noopener noreferrer"

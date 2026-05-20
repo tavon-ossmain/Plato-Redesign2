@@ -10,6 +10,7 @@ import type { Contact } from './contact';
 export interface Signal {
   id: string;
   company: string;
+  accountDomain: string;
   contact: Contact;
   source: string;
   sourcePlatform: string;
@@ -22,13 +23,23 @@ export interface Signal {
   seenAt: string;
   lastVerifiedAt: string;
   disposition: string;
+  billingReason: string;
   recommendedChannel: string;
   owner: string;
   route: string;
+  actionStatus: string;
   crmStatus: string;
+  /** @nullable */
+  crmRecordId: string | null;
   dedupeStatus: string;
+  /** @nullable */
+  duplicateOf: string | null;
+  territory: string;
   modelPath: string;
+  modelTier: string;
   rawSource: string;
+  nextAction: string;
+  outreachDraft: string;
   /** @nullable */
   feedback?: string | null;
 }

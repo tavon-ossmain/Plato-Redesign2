@@ -8,6 +8,7 @@
 
 export * from './assignInput';
 export * from './contact';
+export * from './costGuard';
 export * from './dashboard';
 export * from './errorResponse';
 export * from './feedbackInput';

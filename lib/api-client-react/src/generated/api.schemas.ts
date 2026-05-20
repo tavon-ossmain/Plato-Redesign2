@@ -19,12 +19,28 @@ export interface Workspace {
   plan: string;
   quota: number;
   used: number;
+  primaryCrm: string;
+  deliveryMode: string;
 }
 
 export interface SourceHealth {
   name: string;
   yield: number;
   status: string;
+  mode: string;
+  scanned: number;
+  accepted: number;
+  duplicates: number;
+  stale: number;
+}
+
+export interface CostGuard {
+  status: string;
+  defaultModel: string;
+  escalationModel: string;
+  weeklyBudgetUsd: number;
+  spentUsd: number;
+  degradedAction: string;
 }
 
 export interface Dashboard {
@@ -36,6 +52,16 @@ export interface Dashboard {
   intentUpdates: number;
   quota: number;
   used: number;
+  deliveredToday: number;
+  weeklyTargetMin: number;
+  weeklyTargetMax: number;
+  rolledOver: number;
+  /** @nullable */
+  noLeadReason: string | null;
+  workspaceName?: string;
+  primaryCrm?: string;
+  deliveryMode?: string;
+  costGuard: CostGuard;
   sources: SourceHealth[];
 }
 
@@ -48,6 +74,7 @@ export interface Contact {
 export interface Signal {
   id: string;
   company: string;
+  accountDomain: string;
   contact: Contact;
   source: string;
   sourcePlatform: string;
@@ -60,13 +87,23 @@ export interface Signal {
   seenAt: string;
   lastVerifiedAt: string;
   disposition: string;
+  billingReason: string;
   recommendedChannel: string;
   owner: string;
   route: string;
+  actionStatus: string;
   crmStatus: string;
+  /** @nullable */
+  crmRecordId: string | null;
   dedupeStatus: string;
+  /** @nullable */
+  duplicateOf: string | null;
+  territory: string;
   modelPath: string;
+  modelTier: string;
   rawSource: string;
+  nextAction: string;
+  outreachDraft: string;
   /** @nullable */
   feedback?: string | null;
 }

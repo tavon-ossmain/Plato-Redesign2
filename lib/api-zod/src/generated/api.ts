@@ -25,7 +25,9 @@ export const ListWorkspacesResponseItem = zod.object({
   "name": zod.string(),
   "plan": zod.string(),
   "quota": zod.number(),
-  "used": zod.number()
+  "used": zod.number(),
+  "primaryCrm": zod.string(),
+  "deliveryMode": zod.string()
 })
 export const ListWorkspacesResponse = zod.array(ListWorkspacesResponseItem)
 
@@ -46,10 +48,31 @@ export const GetWorkspaceDashboardResponse = zod.object({
   "intentUpdates": zod.number(),
   "quota": zod.number(),
   "used": zod.number(),
+  "deliveredToday": zod.number(),
+  "weeklyTargetMin": zod.number(),
+  "weeklyTargetMax": zod.number(),
+  "rolledOver": zod.number(),
+  "noLeadReason": zod.string().nullable(),
+  "workspaceName": zod.string().optional(),
+  "primaryCrm": zod.string().optional(),
+  "deliveryMode": zod.string().optional(),
+  "costGuard": zod.object({
+  "status": zod.string(),
+  "defaultModel": zod.string(),
+  "escalationModel": zod.string(),
+  "weeklyBudgetUsd": zod.number(),
+  "spentUsd": zod.number(),
+  "degradedAction": zod.string()
+}),
   "sources": zod.array(zod.object({
   "name": zod.string(),
   "yield": zod.number(),
-  "status": zod.string()
+  "status": zod.string(),
+  "mode": zod.string(),
+  "scanned": zod.number(),
+  "accepted": zod.number(),
+  "duplicates": zod.number(),
+  "stale": zod.number()
 }))
 })
 
@@ -64,6 +87,7 @@ export const GetWorkspacePipelineParams = zod.object({
 export const GetWorkspacePipelineResponseItem = zod.object({
   "id": zod.string(),
   "company": zod.string(),
+  "accountDomain": zod.string(),
   "contact": zod.object({
   "name": zod.string(),
   "title": zod.string(),
@@ -80,13 +104,21 @@ export const GetWorkspacePipelineResponseItem = zod.object({
   "seenAt": zod.string(),
   "lastVerifiedAt": zod.string(),
   "disposition": zod.string(),
+  "billingReason": zod.string(),
   "recommendedChannel": zod.string(),
   "owner": zod.string(),
   "route": zod.string(),
+  "actionStatus": zod.string(),
   "crmStatus": zod.string(),
+  "crmRecordId": zod.string().nullable(),
   "dedupeStatus": zod.string(),
+  "duplicateOf": zod.string().nullable(),
+  "territory": zod.string(),
   "modelPath": zod.string(),
+  "modelTier": zod.string(),
   "rawSource": zod.string(),
+  "nextAction": zod.string(),
+  "outreachDraft": zod.string(),
   "feedback": zod.string().nullish()
 })
 export const GetWorkspacePipelineResponse = zod.array(GetWorkspacePipelineResponseItem)
@@ -107,6 +139,7 @@ export const AssignOpportunityBody = zod.object({
 export const AssignOpportunityResponse = zod.object({
   "id": zod.string(),
   "company": zod.string(),
+  "accountDomain": zod.string(),
   "contact": zod.object({
   "name": zod.string(),
   "title": zod.string(),
@@ -123,13 +156,68 @@ export const AssignOpportunityResponse = zod.object({
   "seenAt": zod.string(),
   "lastVerifiedAt": zod.string(),
   "disposition": zod.string(),
+  "billingReason": zod.string(),
   "recommendedChannel": zod.string(),
   "owner": zod.string(),
   "route": zod.string(),
+  "actionStatus": zod.string(),
   "crmStatus": zod.string(),
+  "crmRecordId": zod.string().nullable(),
   "dedupeStatus": zod.string(),
+  "duplicateOf": zod.string().nullable(),
+  "territory": zod.string(),
   "modelPath": zod.string(),
+  "modelTier": zod.string(),
   "rawSource": zod.string(),
+  "nextAction": zod.string(),
+  "outreachDraft": zod.string(),
+  "feedback": zod.string().nullish()
+})
+
+
+/**
+ * @summary Queue approved outreach for a signal
+ */
+export const StartOutreachParams = zod.object({
+  "workspaceId": zod.coerce.string(),
+  "opportunityId": zod.coerce.string()
+})
+
+export const StartOutreachResponse = zod.object({
+  "id": zod.string(),
+  "company": zod.string(),
+  "accountDomain": zod.string(),
+  "contact": zod.object({
+  "name": zod.string(),
+  "title": zod.string(),
+  "linkedin": zod.string()
+}),
+  "source": zod.string(),
+  "sourcePlatform": zod.string(),
+  "sourceUrl": zod.string(),
+  "evidenceSnippet": zod.string(),
+  "whyNow": zod.string(),
+  "fitScore": zod.number(),
+  "confidenceScore": zod.number(),
+  "freshnessScore": zod.number(),
+  "seenAt": zod.string(),
+  "lastVerifiedAt": zod.string(),
+  "disposition": zod.string(),
+  "billingReason": zod.string(),
+  "recommendedChannel": zod.string(),
+  "owner": zod.string(),
+  "route": zod.string(),
+  "actionStatus": zod.string(),
+  "crmStatus": zod.string(),
+  "crmRecordId": zod.string().nullable(),
+  "dedupeStatus": zod.string(),
+  "duplicateOf": zod.string().nullable(),
+  "territory": zod.string(),
+  "modelPath": zod.string(),
+  "modelTier": zod.string(),
+  "rawSource": zod.string(),
+  "nextAction": zod.string(),
+  "outreachDraft": zod.string(),
   "feedback": zod.string().nullish()
 })
 
@@ -146,6 +234,7 @@ export const SubmitFeedbackBody = zod.object({
 export const SubmitFeedbackResponse = zod.object({
   "id": zod.string(),
   "company": zod.string(),
+  "accountDomain": zod.string(),
   "contact": zod.object({
   "name": zod.string(),
   "title": zod.string(),
@@ -162,13 +251,21 @@ export const SubmitFeedbackResponse = zod.object({
   "seenAt": zod.string(),
   "lastVerifiedAt": zod.string(),
   "disposition": zod.string(),
+  "billingReason": zod.string(),
   "recommendedChannel": zod.string(),
   "owner": zod.string(),
   "route": zod.string(),
+  "actionStatus": zod.string(),
   "crmStatus": zod.string(),
+  "crmRecordId": zod.string().nullable(),
   "dedupeStatus": zod.string(),
+  "duplicateOf": zod.string().nullable(),
+  "territory": zod.string(),
   "modelPath": zod.string(),
+  "modelTier": zod.string(),
   "rawSource": zod.string(),
+  "nextAction": zod.string(),
+  "outreachDraft": zod.string(),
   "feedback": zod.string().nullish()
 })
 

@@ -134,6 +134,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /workspaces/{workspaceId}/opportunities/{opportunityId}/outreach:
+    post:
+      operationId: startOutreach
+      tags: [pipeline]
+      summary: Queue approved outreach for a signal
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Outreach queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Signal"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Signal cannot start outreach
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /feedback:
     post:
       operationId: submitFeedback
@@ -190,12 +226,18 @@ components:
           type: integer
         used:
           type: integer
+        primaryCrm:
+          type: string
+        deliveryMode:
+          type: string
       required:
         - id
         - name
         - plan
         - quota
         - used
+        - primaryCrm
+        - deliveryMode
 
     SourceHealth:
       type: object
@@ -206,10 +248,48 @@ components:
           type: integer
         status:
           type: string
+        mode:
+          type: string
+        scanned:
+          type: integer
+        accepted:
+          type: integer
+        duplicates:
+          type: integer
+        stale:
+          type: integer
       required:
         - name
         - yield
         - status
+        - mode
+        - scanned
+        - accepted
+        - duplicates
+        - stale
+
+    CostGuard:
+      type: object
+      properties:
+        status:
+          type: string
+        defaultModel:
+          type: string
+        escalationModel:
+          type: string
+        weeklyBudgetUsd:
+          type: number
+        spentUsd:
+          type: number
+        degradedAction:
+          type: string
+      required:
+        - status
+        - defaultModel
+        - escalationModel
+        - weeklyBudgetUsd
+        - spentUsd
+        - degradedAction
 
     Dashboard:
       type: object
@@ -230,6 +310,24 @@ components:
           type: integer
         used:
           type: integer
+        deliveredToday:
+          type: integer
+        weeklyTargetMin:
+          type: integer
+        weeklyTargetMax:
+          type: integer
+        rolledOver:
+          type: integer
+        noLeadReason:
+          type: ["string", "null"]
+        workspaceName:
+          type: string
+        primaryCrm:
+          type: string
+        deliveryMode:
+          type: string
+        costGuard:
+          $ref: "#/components/schemas/CostGuard"
         sources:
           type: array
           items:
@@ -243,6 +341,12 @@ components:
         - intentUpdates
         - quota
         - used
+        - deliveredToday
+        - weeklyTargetMin
+        - weeklyTargetMax
+        - rolledOver
+        - noLeadReason
+        - costGuard
         - sources
 
     Contact:
@@ -265,6 +369,8 @@ components:
         id:
           type: string
         company:
+          type: string
+        accountDomain:
           type: string
         contact:
           $ref: "#/components/schemas/Contact"
@@ -290,25 +396,42 @@ components:
           type: string
         disposition:
           type: string
+        billingReason:
+          type: string
         recommendedChannel:
           type: string
         owner:
           type: string
         route:
           type: string
+        actionStatus:
+          type: string
         crmStatus:
           type: string
+        crmRecordId:
+          type: ["string", "null"]
         dedupeStatus:
+          type: string
+        duplicateOf:
+          type: ["string", "null"]
+        territory:
           type: string
         modelPath:
           type: string
+        modelTier:
+          type: string
         rawSource:
+          type: string
+        nextAction:
+          type: string
+        outreachDraft:
           type: string
         feedback:
           type: ["string", "null"]
       required:
         - id
         - company
+        - accountDomain
         - contact
         - source
         - sourcePlatform
@@ -321,13 +444,21 @@ components:
         - seenAt
         - lastVerifiedAt
         - disposition
+        - billingReason
         - recommendedChannel
         - owner
         - route
+        - actionStatus
         - crmStatus
+        - crmRecordId
         - dedupeStatus
+        - duplicateOf
+        - territory
         - modelPath
+        - modelTier
         - rawSource
+        - nextAction
+        - outreachDraft
 
     AssignInput:
       type: object

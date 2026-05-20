@@ -424,6 +424,78 @@ export const useAssignOpportunity = <TError = ErrorType<ErrorResponse>,
       return useMutation(getAssignOpportunityMutationOptions(options));
     }
 
+export const getStartOutreachUrl = (workspaceId: string,
+    opportunityId: string,) => {
+
+
+
+
+  return `/api/workspaces/${workspaceId}/opportunities/${opportunityId}/outreach`
+}
+
+/**
+ * @summary Queue approved outreach for a signal
+ */
+export const startOutreach = async (workspaceId: string,
+    opportunityId: string, options?: RequestInit): Promise<Signal> => {
+
+  return customFetch<Signal>(getStartOutreachUrl(workspaceId,opportunityId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getStartOutreachMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startOutreach>>, TError,{workspaceId: string;opportunityId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startOutreach>>, TError,{workspaceId: string;opportunityId: string}, TContext> => {
+
+const mutationKey = ['startOutreach'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startOutreach>>, {workspaceId: string;opportunityId: string}> = (props) => {
+          const {workspaceId,opportunityId} = props ?? {};
+
+          return  startOutreach(workspaceId,opportunityId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartOutreachMutationResult = NonNullable<Awaited<ReturnType<typeof startOutreach>>>
+
+    export type StartOutreachMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Queue approved outreach for a signal
+ */
+export const useStartOutreach = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startOutreach>>, TError,{workspaceId: string;opportunityId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startOutreach>>,
+        TError,
+        {workspaceId: string;opportunityId: string},
+        TContext
+      > => {
+      return useMutation(getStartOutreachMutationOptions(options));
+    }
+
 export const getSubmitFeedbackUrl = () => {
 
 

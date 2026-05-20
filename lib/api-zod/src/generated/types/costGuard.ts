@@ -6,13 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SourceHealth {
-  name: string;
-  yield: number;
+export interface CostGuard {
   status: string;
-  mode: string;
-  scanned: number;
-  accepted: number;
-  duplicates: number;
-  stale: number;
+  defaultModel: string;
+  escalationModel: string;
+  weeklyBudgetUsd: number;
+  spentUsd: number;
+  degradedAction: string;
 }

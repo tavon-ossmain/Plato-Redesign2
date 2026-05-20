@@ -12,4 +12,6 @@ export interface Workspace {
   plan: string;
   quota: number;
   used: number;
+  primaryCrm: string;
+  deliveryMode: string;
 }
