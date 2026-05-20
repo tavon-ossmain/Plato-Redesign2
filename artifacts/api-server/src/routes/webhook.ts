@@ -34,6 +34,13 @@ router.post("/webhooks/brief", async (req, res, next) => {
     }
     const brief = result.data;
 
+    // Log receipt immediately — this fires before GPT/DB so every prospect
+    // is captured in the log even if downstream processing fails
+    req.log.info(
+      { company: brief.companyName, email: brief.contactEmail, sources: brief.signalSources },
+      "Brief received",
+    );
+
     // Parse ICP with GPT (cost-guarded)
     const icpConfig = await parseIcp(brief);
 
@@ -76,7 +83,10 @@ router.post("/webhooks/brief", async (req, res, next) => {
         .onConflictDoNothing();
     }
 
-    req.log.info({ workspaceId, model: icpConfig.modelUsed, confidence: icpConfig.confidence }, "Brief processed");
+    req.log.info(
+      { workspaceId, model: icpConfig.modelUsed, confidence: icpConfig.confidence },
+      "Brief processed",
+    );
 
     // Send confirmation email — fire and forget (non-blocking)
     sendBriefConfirmation({
@@ -90,6 +100,11 @@ router.post("/webhooks/brief", async (req, res, next) => {
       icpConfig,
     });
   } catch (err) {
+    // Log who submitted so we can follow up manually if Core failed
+    req.log.error(
+      { company: req.body?.companyName, email: req.body?.contactEmail, err },
+      "Brief processing failed",
+    );
     next(err);
   }
 });
