@@ -1,10 +1,26 @@
 import { Resend } from "resend";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { logger } from "./logger";
 
-const FROM        = process.env.RESEND_FROM_EMAIL ?? "Plato's <hello@platos.agency>";
-const APP_URL     = process.env.APP_URL ?? "https://plato-redesign.replit.app";
-const CALENDLY    = "https://calendly.com/platos-io/15min";
-const LOGO_URL    = `${APP_URL}/api/assets/logo.png`;
+const FROM     = process.env.RESEND_FROM_EMAIL ?? "Plato's <hello@platos.agency>";
+const APP_URL  = process.env.APP_URL ?? "https://plato-redesign.replit.app";
+const CALENDLY = "https://calendly.com/platos-io/15min";
+
+// Inline the logo so it renders in email clients regardless of deployment state
+function loadLogoDataUri(): string {
+  try {
+    const assetsDir = join(dirname(fileURLToPath(import.meta.url)), "../assets");
+    const buf = readFileSync(join(assetsDir, "logo.png"));
+    return `data:image/png;base64,${buf.toString("base64")}`;
+  } catch {
+    // Fall back to hosted URL if file is missing (e.g. local dev without assets)
+    return `${APP_URL}/api/assets/logo.png`;
+  }
+}
+
+const LOGO_URL = loadLogoDataUri();
 
 // ── HTML builder ─────────────────────────────────────────────────
 
