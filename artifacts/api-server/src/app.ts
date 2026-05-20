@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "node:path";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
@@ -48,6 +49,7 @@ app.use(
   })),
 );
 
+app.use("/api/assets", express.static(path.join(__dirname, "assets")));
 app.use("/api", router);
 
 export default app;

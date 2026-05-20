@@ -4,7 +4,7 @@ import { logger } from "./logger";
 const FROM        = process.env.RESEND_FROM_EMAIL ?? "Plato's <hello@platos.agency>";
 const APP_URL     = process.env.APP_URL ?? "https://plato-redesign.replit.app";
 const CALENDLY    = "https://calendly.com/platos-io/15min";
-const LOGO_URL    = "https://platos.agency/platos-logo-master.png";
+const LOGO_URL    = `${APP_URL}/api/assets/logo.png`;
 
 // ── HTML builder ─────────────────────────────────────────────────
 
