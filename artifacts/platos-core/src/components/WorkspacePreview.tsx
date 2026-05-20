@@ -373,7 +373,7 @@ function ActivationPanel({ workspaceName, t }: { workspaceName: string; t: T }) 
 
       {/* CTA */}
       <a
-        href="https://platos.agency"
+        href="https://calendly.com/platos-io/15min"
         target="_blank"
         rel="noreferrer"
         className="flex items-center justify-center gap-2 w-full rounded-lg px-4 py-2.5 text-[13px] font-bold transition-all"
