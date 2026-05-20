@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod/v4";
 import { db, workspacesTable, workspaceSourcesTable } from "@workspace/db";
 import { parseIcp } from "../lib/parseIcp";
+import { sendBriefConfirmation } from "../lib/email";
 
 const router = Router();
 
@@ -76,6 +77,14 @@ router.post("/webhooks/brief", async (req, res, next) => {
     }
 
     req.log.info({ workspaceId, model: icpConfig.modelUsed, confidence: icpConfig.confidence }, "Brief processed");
+
+    // Send confirmation email — fire and forget (non-blocking)
+    sendBriefConfirmation({
+      to:          brief.contactEmail,
+      companyName: brief.companyName,
+      workspaceId,
+      icpConfig,
+    });
 
     res.status(201).json({
       workspaceId,
