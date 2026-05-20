@@ -26,7 +26,8 @@ import type {
   FeedbackInput,
   HealthStatus,
   Signal,
-  Workspace
+  Workspace,
+  WorkspaceContext
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -107,6 +108,83 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetMyWorkspaceUrl = () => {
+
+
+
+
+  return `/api/me/workspace`
+}
+
+/**
+ * @summary Get the authenticated user's workspace
+ */
+export const getMyWorkspace = async ( options?: RequestInit): Promise<WorkspaceContext> => {
+
+  return customFetch<WorkspaceContext>(getGetMyWorkspaceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyWorkspaceQueryKey = () => {
+    return [
+    `/api/me/workspace`
+    ] as const;
+    }
+
+
+export const getGetMyWorkspaceQueryOptions = <TData = Awaited<ReturnType<typeof getMyWorkspace>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyWorkspace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyWorkspaceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyWorkspace>>> = ({ signal }) => getMyWorkspace({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyWorkspace>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyWorkspaceQueryResult = NonNullable<Awaited<ReturnType<typeof getMyWorkspace>>>
+export type GetMyWorkspaceQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the authenticated user's workspace
+ */
+
+export function useGetMyWorkspace<TData = Awaited<ReturnType<typeof getMyWorkspace>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyWorkspace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyWorkspaceQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

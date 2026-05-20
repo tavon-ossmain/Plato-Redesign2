@@ -705,13 +705,11 @@ function MobileList({
 }
 
 // ── Main component ──────────────────────────────────────────────
-const WORKSPACE_ID = "ws-1";
-
-export function SignalCommandCenter() {
+export function SignalCommandCenter({ workspaceId }: { workspaceId: string }) {
   const queryClient = useQueryClient();
 
-  const { data: dashboard, isLoading: dashLoading } = useGetWorkspaceDashboard(WORKSPACE_ID);
-  const { data: rawSignals, isLoading: pipelineLoading, isError: pipelineError } = useGetWorkspacePipeline(WORKSPACE_ID);
+  const { data: dashboard, isLoading: dashLoading } = useGetWorkspaceDashboard(workspaceId);
+  const { data: rawSignals, isLoading: pipelineLoading, isError: pipelineError } = useGetWorkspacePipeline(workspaceId);
 
   const assignMutation   = useAssignOpportunity();
   const feedbackMutation = useSubmitFeedback();
@@ -744,16 +742,16 @@ export function SignalCommandCenter() {
   function handleRoute(sig: Signal) {
     setRoutedOverrides((p) => ({ ...p, [sig.id]: true }));
     assignMutation.mutate(
-      { workspaceId: WORKSPACE_ID, opportunityId: sig.id, data: { owner: sig.owner } },
-      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetWorkspacePipelineQueryKey(WORKSPACE_ID) }) },
+      { workspaceId: workspaceId, opportunityId: sig.id, data: { owner: sig.owner } },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetWorkspacePipelineQueryKey(workspaceId) }) },
     );
   }
 
   function handleFeedback(sig: Signal, key: string) {
     setFeedbackOverrides((p) => ({ ...p, [sig.id]: key }));
     feedbackMutation.mutate(
-      { data: { signalId: sig.id, workspaceId: WORKSPACE_ID, feedback: key } },
-      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetWorkspacePipelineQueryKey(WORKSPACE_ID) }) },
+      { data: { signalId: sig.id, workspaceId: workspaceId, feedback: key } },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetWorkspacePipelineQueryKey(workspaceId) }) },
     );
   }
 

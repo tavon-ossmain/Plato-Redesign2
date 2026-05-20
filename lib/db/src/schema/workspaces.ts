@@ -14,6 +14,7 @@ export const workspacesTable = pgTable("workspaces", {
   duplicatesSuppressed: integer("duplicates_suppressed").notNull().default(0),
   staleSignals:         integer("stale_signals").notNull().default(0),
   icpConfig:            jsonb("icp_config").$type<IcpConfig>(),
+  status:               text("status").notNull().default("preview"),
   createdAt:            timestamp("created_at").notNull().defaultNow(),
   updatedAt:            timestamp("updated_at").notNull().defaultNow(),
 });

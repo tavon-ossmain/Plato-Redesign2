@@ -21,6 +21,40 @@ export interface Workspace {
   used: number;
 }
 
+export interface IcpScoringRules {
+  fitFactors: string[];
+  confidenceFactors: string[];
+}
+
+export interface IcpConfig {
+  normalizedIcp: string;
+  signalSources: string[];
+  keywords: string[];
+  disqualifiers: string[];
+  routingNotes: string;
+  scoringRules: IcpScoringRules;
+  modelUsed: string;
+  confidence: number;
+}
+
+export type WorkspaceContextStatus = typeof WorkspaceContextStatus[keyof typeof WorkspaceContextStatus];
+
+
+export const WorkspaceContextStatus = {
+  preview: 'preview',
+  active: 'active',
+} as const;
+
+export interface WorkspaceContext {
+  id: string;
+  name: string;
+  status: WorkspaceContextStatus;
+  plan: string;
+  quota: number;
+  used: number;
+  icpConfig?: IcpConfig | null;
+}
+
 export interface SourceHealth {
   name: string;
   yield: number;

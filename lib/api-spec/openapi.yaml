@@ -31,6 +31,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /me/workspace:
+    get:
+      operationId: getMyWorkspace
+      tags: [workspaces]
+      summary: Get the authenticated user's workspace
+      responses:
+        "200":
+          description: User's workspace with ICP config and status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceContext"
+        "404":
+          description: No workspace found for this user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /workspaces:
     get:
       operationId: listWorkspaces
@@ -193,6 +212,84 @@ components:
       required:
         - id
         - name
+        - plan
+        - quota
+        - used
+
+    IcpScoringRules:
+      type: object
+      properties:
+        fitFactors:
+          type: array
+          items:
+            type: string
+        confidenceFactors:
+          type: array
+          items:
+            type: string
+      required:
+        - fitFactors
+        - confidenceFactors
+
+    IcpConfig:
+      type: object
+      properties:
+        normalizedIcp:
+          type: string
+        signalSources:
+          type: array
+          items:
+            type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        disqualifiers:
+          type: array
+          items:
+            type: string
+        routingNotes:
+          type: string
+        scoringRules:
+          $ref: "#/components/schemas/IcpScoringRules"
+        modelUsed:
+          type: string
+        confidence:
+          type: number
+      required:
+        - normalizedIcp
+        - signalSources
+        - keywords
+        - disqualifiers
+        - routingNotes
+        - scoringRules
+        - modelUsed
+        - confidence
+
+    WorkspaceContext:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [preview, active]
+        plan:
+          type: string
+        quota:
+          type: integer
+        used:
+          type: integer
+        icpConfig:
+          oneOf:
+            - $ref: "#/components/schemas/IcpConfig"
+            - type: "null"
+      required:
+        - id
+        - name
+        - status
         - plan
         - quota
         - used

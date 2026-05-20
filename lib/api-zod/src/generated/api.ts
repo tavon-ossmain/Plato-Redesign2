@@ -18,6 +18,32 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Get the authenticated user's workspace
+ */
+export const GetMyWorkspaceResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "status": zod.enum(['preview', 'active']),
+  "plan": zod.string(),
+  "quota": zod.number(),
+  "used": zod.number(),
+  "icpConfig": zod.union([zod.object({
+  "normalizedIcp": zod.string(),
+  "signalSources": zod.array(zod.string()),
+  "keywords": zod.array(zod.string()),
+  "disqualifiers": zod.array(zod.string()),
+  "routingNotes": zod.string(),
+  "scoringRules": zod.object({
+  "fitFactors": zod.array(zod.string()),
+  "confidenceFactors": zod.array(zod.string())
+}),
+  "modelUsed": zod.string(),
+  "confidence": zod.number()
+}),zod.null()]).optional()
+})
+
+
+/**
  * @summary List workspaces
  */
 export const ListWorkspacesResponseItem = zod.object({

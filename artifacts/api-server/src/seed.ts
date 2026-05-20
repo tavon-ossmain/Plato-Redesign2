@@ -25,6 +25,7 @@ async function seed() {
         uniqueAccounts: 1847,
         duplicatesSuppressed: 412,
         staleSignals: 223,
+        status: "active",
       },
       {
         id: "ws-2",
@@ -36,6 +37,7 @@ async function seed() {
         uniqueAccounts: 3201,
         duplicatesSuppressed: 780,
         staleSignals: 401,
+        status: "active",
       },
     ])
     .onConflictDoNothing();

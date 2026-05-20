@@ -10,9 +10,12 @@ import {
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { dark } from "@clerk/themes";
 import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wouter";
-import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { getGetMyWorkspaceQueryOptions } from "@workspace/api-client-react";
 import { SignalCommandCenter } from "@/components/SignalCommandCenter";
+import { WorkspacePreview } from "@/components/WorkspacePreview";
+import { WorkspaceEmptyState } from "@/components/WorkspaceEmptyState";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -164,11 +167,47 @@ function HomeRedirect() {
   );
 }
 
+function WorkspaceGate() {
+  const { data: workspace, isLoading, isError } = useQuery({
+    ...getGetMyWorkspaceQueryOptions(),
+    retry: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div
+        className="h-screen w-screen flex items-center justify-center"
+        style={{ background: "#07070e" }}
+      >
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-full border-2 border-transparent animate-spin"
+            style={{ borderTopColor: "#06d0e4", borderRightColor: "rgba(6,208,228,0.3)" }}
+          />
+          <span className="text-[12px]" style={{ color: "#5a5a78", fontFamily: "'Inter', system-ui, sans-serif" }}>
+            Loading workspace…
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !workspace) {
+    return <WorkspaceEmptyState />;
+  }
+
+  if (workspace.status === "preview") {
+    return <WorkspacePreview workspace={workspace} />;
+  }
+
+  return <SignalCommandCenter workspaceId={workspace.id} />;
+}
+
 function AppPage() {
   return (
     <>
       <Show when="signed-in">
-        <SignalCommandCenter />
+        <WorkspaceGate />
       </Show>
       <Show when="signed-out">
         <Redirect to="/" />
