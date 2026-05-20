@@ -1,0 +1,64 @@
+After this email + preview flow is set, you should expect this:
+
+A prospect goes to `platos.agency`, fills out the brief, gets a branded email, signs into Plato’s Core, and sees a **preview workspace built from their own ICP**. They do not get full leads yet. The whole experience should make them think, “Okay, this is real. I want to see this turned on for my market.”
+
+What happens next in the flow:
+
+```text
+platos.agency brief
+→ Core webhook creates workspace
+→ GPT parses ICP/sources/filters
+→ branded email sends signup link
+→ user signs in with same email
+→ preview workspace loads
+→ CTA pushes activation call
+→ you sell DIY signals or managed outreach
+```
+
+To launch ASAP, do this in order:
+
+1. **Finish Core preview gate**
+   Make sure users only see preview data before activation.
+
+2. **Wire website to Core**
+   The agency site must POST to:
+   ```text
+   https://plato-redesign.replit.app/api/webhooks/brief
+   ```
+
+3. **Test the full flow with your own email**
+   Fill out the live site form, get the email, sign in, confirm your preview appears.
+
+4. **Create the activation call script**
+   Simple sales flow:
+   ```text
+   Here’s the workspace your brief created.
+   Here’s your ICP.
+   Here are the sources we recommend.
+   Here’s what live sourcing unlocks.
+   Here’s what we can deliver weekly.
+   Do you want DIY signals or managed outreach?
+   ```
+
+5. **Pick your first launch offer**
+   I’d keep it simple:
+   ```text
+   $1,500 setup
+   $1,000-$2,500/month for signal delivery
+   Managed outreach upsell: +$1,500-$3,500/month
+   ```
+
+6. **Launch to warm network first**
+   Don’t mass launch yet. Send to 10-20 people/agencies/founders you know and say:
+   ```text
+   I built a tool that creates a signal workspace from your ICP and shows where active buyer intent may be hiding. Want me to generate a preview for your business?
+   ```
+
+7. **Use the demo as the sales call**
+   Best close:
+   ```text
+   This is what your preview found.
+   Activation turns on live sourcing, routing, and delivery.
+   ```
+
+Once the full test works, you are launchable. Not “perfect SaaS launch” launchable, but **sell-first managed service launchable**, which is what we want.
