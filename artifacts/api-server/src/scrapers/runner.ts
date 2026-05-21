@@ -8,6 +8,8 @@ import {
   type SourceConfig,
 } from "@workspace/db/schema";
 import { logger } from "../lib/logger.js";
+import { enrichSignalsWithApollo } from "../lib/apollo.js";
+import { deliverSignalsToSlack } from "../lib/signalDelivery.js";
 import { getAdapter } from "./registry.js";
 import type { ScraperInput, RawSignal } from "./types.js";
 
@@ -52,8 +54,8 @@ function recommendedChannel(sourcePlatform: string): string {
 async function writeSignals(
   signals: RawSignal[],
   config: SourceConfig,
-): Promise<number> {
-  if (signals.length === 0) return 0;
+): Promise<Array<typeof signalsTable.$inferSelect>> {
+  if (signals.length === 0) return [];
 
   const rows = signals.map((s) => ({
     id:                 signalId(config.workspaceId, s.sourceUrl, s.evidenceSnippet),
@@ -62,6 +64,9 @@ async function writeSignals(
     contactName:        s.contactName || "Unknown",
     contactTitle:       s.contactTitle || "",
     contactLinkedin:    s.contactLinkedin || "",
+    contactEmail:       s.contactEmail || "",
+    contactPhone:       s.contactPhone || "",
+    companyDomain:      s.companyDomain || "",
     source:             s.source,
     sourcePlatform:     s.sourcePlatform,
     sourceUrl:          s.sourceUrl,
@@ -79,6 +84,8 @@ async function writeSignals(
     crmStatus:          "clean",
     dedupeStatus:       "unique",
     modelPath:          "",
+    enrichmentSource:   s.enrichmentSource || "none",
+    enrichmentStatus:   s.enrichmentStatus || "not_enriched",
     rawSource:          s.rawSource,
   }));
 
@@ -86,9 +93,9 @@ async function writeSignals(
     .insert(signalsTable)
     .values(rows)
     .onConflictDoNothing()
-    .returning({ id: signalsTable.id });
+    .returning();
 
-  return inserted.length;
+  return inserted;
 }
 
 async function processJob(jobId: number, config: SourceConfig): Promise<void> {
@@ -131,7 +138,9 @@ async function processJob(jobId: number, config: SourceConfig): Promise<void> {
 
   try {
     const results = await adapter.run(input);
-    const written = await writeSignals(results, config);
+    const enrichedResults = await enrichSignalsWithApollo(results);
+    const writtenSignals = await writeSignals(enrichedResults, config);
+    await deliverSignalsToSlack(config.workspaceId, writtenSignals);
 
     await db
       .update(scraperJobsTable)
@@ -139,13 +148,13 @@ async function processJob(jobId: number, config: SourceConfig): Promise<void> {
         status:      "completed",
         lastRunAt:   new Date(),
         nextRunAt:   nextRunAt(config.runFrequency),
-        runLog:      `${new Date().toISOString()} — fetched ${results.length} candidates, wrote ${written} new signals.`,
+        runLog:      `${new Date().toISOString()} — fetched ${results.length} candidates, enriched ${enrichedResults.length}, wrote ${writtenSignals.length} new signals.`,
         errorMessage: null,
         updatedAt:   new Date(),
       })
       .where(eq(scraperJobsTable.id, jobId));
 
-    logger.info({ jobId, workspaceId: config.workspaceId, written }, "Scraper job completed");
+    logger.info({ jobId, workspaceId: config.workspaceId, written: writtenSignals.length }, "Scraper job completed");
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     await db

@@ -17,7 +17,10 @@ function toApiSignal(row: typeof signalsTable.$inferSelect) {
       name:     row.contactName,
       title:    row.contactTitle,
       linkedin: row.contactLinkedin,
+      email:    row.contactEmail,
+      phone:    row.contactPhone,
     },
+    companyDomain:      row.companyDomain,
     source:             row.source,
     sourcePlatform:     row.sourcePlatform,
     sourceUrl:          row.sourceUrl,
@@ -35,6 +38,8 @@ function toApiSignal(row: typeof signalsTable.$inferSelect) {
     crmStatus:          row.crmStatus,
     dedupeStatus:       row.dedupeStatus,
     modelPath:          row.modelPath,
+    enrichmentSource:   row.enrichmentSource,
+    enrichmentStatus:   row.enrichmentStatus,
     rawSource:          row.rawSource,
     feedback:           row.feedback ?? null,
   };
@@ -83,12 +88,12 @@ router.get("/workspaces/:workspaceId/dashboard", async (req, res, next) => {
     const [billable] = await db
       .select({ n: count() })
       .from(signalsTable)
-      .where(and(eq(signalsTable.workspaceId, workspaceId), eq(signalsTable.disposition, "billable_opportunity")));
+      .where(and(eq(signalsTable.workspaceId, workspaceId), eq(signalsTable.disposition, "billable")));
 
     const [intent] = await db
       .select({ n: count() })
       .from(signalsTable)
-      .where(and(eq(signalsTable.workspaceId, workspaceId), eq(signalsTable.disposition, "intent_update")));
+      .where(and(eq(signalsTable.workspaceId, workspaceId), eq(signalsTable.disposition, "watchlist")));
 
     res.json({
       rawScanned:           ws.rawScanned,

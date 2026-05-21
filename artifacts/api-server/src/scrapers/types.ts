@@ -21,6 +21,9 @@ export interface RawSignal {
   contactName: string;
   contactTitle: string;
   contactLinkedin: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  companyDomain?: string;
   source: string;
   sourcePlatform: string;
   sourceUrl: string;
@@ -30,6 +33,8 @@ export interface RawSignal {
   confidenceScore: number;
   freshnessScore: number;
   seenAt: string;
+  enrichmentSource?: string;
+  enrichmentStatus?: string;
   rawSource: string;
 }
 

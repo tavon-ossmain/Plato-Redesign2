@@ -188,7 +188,8 @@ function formatTime(iso: string) {
 interface Signal {
   id: string;
   company: string;
-  contact: { name: string; title: string; linkedin: string };
+  contact: { name: string; title: string; linkedin: string; email?: string; phone?: string };
+  companyDomain?: string;
   source: string;
   sourcePlatform: string;
   sourceUrl: string;
@@ -206,6 +207,8 @@ interface Signal {
   crmStatus: string;
   dedupeStatus: string;
   modelPath: string;
+  enrichmentSource?: string;
+  enrichmentStatus?: string;
   rawSource: string;
   feedback?: string | null;
 }
@@ -456,6 +459,18 @@ function MobileDetail({
             <span className="text-xs font-semibold" style={{ color: t.c }}>{sig.contact.name}</span>
             <span style={{ color: t.textFaint }}>·</span>
             <span className="text-xs" style={{ color: t.textSub }}>{sig.contact.title}</span>
+            {sig.contact.email && (
+              <>
+                <span style={{ color: t.textFaint }}>·</span>
+                <span className="text-xs" style={{ color: t.textSub }}>{sig.contact.email}</span>
+              </>
+            )}
+            {sig.enrichmentStatus && sig.enrichmentStatus !== "not_enriched" && (
+              <span className="text-[10px] px-2 py-1 font-medium"
+                style={{ background: t.card, border: `1px solid ${t.borderCard}`, color: t.label, borderRadius: 20, boxShadow: t.shadowSm }}>
+                {sig.enrichmentStatus}
+              </span>
+            )}
           </div>
 
           {/* Evidence */}
@@ -1074,6 +1089,12 @@ export function SignalCommandCenter({ workspaceId }: { workspaceId: string }) {
                         <span className="text-xs font-semibold" style={{ color: t.c }}>{activeSig.contact.name}</span>
                         <span style={{ color: t.textFaint }}>·</span>
                         <span className="text-xs" style={{ color: t.textSub }}>{activeSig.contact.title}</span>
+                        {activeSig.contact.email && (
+                          <>
+                            <span style={{ color: t.textFaint }}>·</span>
+                            <span className="text-xs" style={{ color: t.textSub }}>{activeSig.contact.email}</span>
+                          </>
+                        )}
                         <span style={{ color: t.textFaint }}>·</span>
                         <span className="text-xs" style={{ color: t.textSub }}>{activeSig.source}</span>
                       </div>
