@@ -8,6 +8,9 @@ export const scraperJobsTable = pgTable("scraper_jobs", {
   sourceConfigId: integer("source_config_id").notNull(),
   jobType:        text("job_type").notNull(), // e.g. "linkedin_scrape"
   status:         text("status").notNull().default("paused"), // paused | queued | running | completed | failed
+  attempts:       integer("attempts").notNull().default(0),
+  runLog:         text("run_log"),
+  errorMessage:   text("error_message"),
   nextRunAt:      timestamp("next_run_at"),
   lastRunAt:      timestamp("last_run_at"),
   createdAt:      timestamp("created_at").notNull().defaultNow(),
