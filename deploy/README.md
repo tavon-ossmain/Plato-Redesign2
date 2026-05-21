@@ -1,29 +1,81 @@
 # Self-hosting Plato's Core on a DigitalOcean Droplet
 
+Replit remains dev/staging. The droplet runs the full production stack:
+the customer app, admin panel, API, webhook receiver, and scraper worker.
+
+---
+
+## Architecture
+
+```
+                 ┌─────────────────────────────────┐
+  Browser ──────▶│  nginx (443 / TLS termination)  │
+                 └────────────┬────────────────────┘
+                              │
+                 ┌────────────▼────────────────────┐
+                 │  PM2: platos-core-web (port 8080)│
+                 │  Express: /api + static frontend │
+                 └────────────┬────────────────────┘
+                              │
+                 ┌────────────▼────────────────────┐
+                 │  PM2: platos-core-worker         │
+                 │  Scraper job runner (no HTTP)    │
+                 └────────────┬────────────────────┘
+                              │
+                 ┌────────────▼────────────────────┐
+                 │  PostgreSQL 16                  │
+                 └─────────────────────────────────┘
+```
+
+Both PM2 processes share the same `DATABASE_URL`. Tenant isolation is
+enforced by `workspace_id` throughout the schema and all queries.
+
+---
+
 ## Recommended droplet
 
-| Spec | Minimum | Comfortable |
-|---|---|---|
-| Plan | Basic | General Purpose |
-| RAM | 2 GB | 4 GB |
-| CPU | 1 vCPU | 2 vCPU |
-| OS | Ubuntu 24.04 LTS | Ubuntu 24.04 LTS |
+| Spec | Minimum |
+|---|---|
+| Plan | Basic |
+| RAM | 2 GB |
+| CPU | 1 vCPU |
+| OS  | Ubuntu 24.04 LTS |
 
 ---
 
 ## One-time droplet setup
 
 ```bash
-# 1. Install Docker
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-newgrp docker
+# 1 — Install Node 24 via nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+nvm install 24
+nvm use 24
+nvm alias default 24
 
-# 2. Install Docker Compose v2 plugin (included with Docker CE ≥ 24)
-docker compose version   # verify
+# 2 — Install pnpm
+corepack enable
+corepack prepare pnpm@latest --activate
 
-# 3. (Optional but recommended) Install nginx for TLS termination
+# 3 — Install PM2 globally
+npm install -g pm2
+
+# 4 — Install PostgreSQL 16
+sudo apt update
+sudo apt install -y postgresql-16
+sudo systemctl enable --now postgresql
+
+# 5 — Install nginx
 sudo apt install -y nginx certbot python3-certbot-nginx
+sudo systemctl enable --now nginx
+
+# 6 — Create the database
+sudo -u postgres psql -c "CREATE USER platos WITH PASSWORD 'your_strong_password';"
+sudo -u postgres psql -c "CREATE DATABASE platos OWNER platos;"
+
+# 7 — Create log directory
+sudo mkdir -p /var/log/platos
+sudo chown $USER /var/log/platos
 ```
 
 ---
@@ -31,45 +83,97 @@ sudo apt install -y nginx certbot python3-certbot-nginx
 ## Deploy the app
 
 ```bash
-# 1. Clone the repo onto the droplet
-git clone https://github.com/tavon-ossmain/Plato-Redesign2.git platos
-cd platos
+# 1 — Clone the repo
+git clone https://github.com/tavon-ossmain/Plato-Redesign2.git /var/www/platos
+cd /var/www/platos
 
-# 2. Create your env file
-cp deploy/.env.example deploy/.env
-nano deploy/.env          # fill in every value
+# 2 — Install dependencies
+pnpm install --frozen-lockfile
 
-# 3. Build and start (first run takes ~3-5 min to build images)
-docker compose -f deploy/docker-compose.yml up -d --build
+# 3 — Create env file (copy example, then fill in all values)
+cp .env.example .env
+nano .env
 
-# 4. Tail logs to confirm startup
-docker compose -f deploy/docker-compose.yml logs -f
+# 4 — Run database migrations
+pnpm --filter @workspace/db run push
+
+# 5 — Build for production (compiles API + frontend)
+pnpm run build:prod
+
+# 6 — Start with PM2
+pm2 start ecosystem.config.cjs --env production
+pm2 save
+pm2 startup    # follow the printed command to enable auto-restart on reboot
 ```
 
-You should see:
-```
-api  | INFO: Server listening  port: 8080
-api  | INFO: Job runner started  intervalMs: 60000
-```
+### Verify
 
-The app is now reachable at `http://<droplet-ip>`.
+```bash
+pm2 list           # both processes should show "online"
+pm2 logs           # tail all logs
+curl -s http://localhost:8080/api/healthz   # should return {"ok":true}
+```
 
 ---
 
-## HTTPS with Let's Encrypt (recommended)
+## nginx configuration
 
-```bash
-# Replace yourdomain.com with your actual domain (DNS must point to the droplet first)
-sudo certbot --nginx -d yourdomain.com
+Create `/etc/nginx/sites-available/platos`:
 
-# Certbot will auto-renew — verify the timer is active
-systemctl status certbot.timer
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com www.yourdomain.com;
+
+    # TLS — filled in by certbot
+    ssl_certificate     /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Proxy everything to Express (which serves API + static frontend)
+    location / {
+        proxy_pass         http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+}
 ```
 
-Then update `APP_URL` in `deploy/.env` to `https://yourdomain.com` and restart:
+```bash
+# Enable the site
+sudo ln -s /etc/nginx/sites-available/platos /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# Issue TLS certificate
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+```
+
+---
+
+## Clerk configuration (required after first deploy)
+
+Before auth works you must register your production domain with Clerk:
+
+1. Go to **Clerk Dashboard → Domains → Add domain**
+2. Add `yourdomain.com`
+3. Copy the new `pk_live_...` / `sk_live_...` keys
+4. Update `.env` with the new keys
+5. Rebuild the frontend (the publishable key is baked in at build time):
 
 ```bash
-docker compose -f deploy/docker-compose.yml restart api
+pnpm run build:prod
+pm2 reload platos-core-web
 ```
 
 ---
@@ -77,64 +181,71 @@ docker compose -f deploy/docker-compose.yml restart api
 ## Day-to-day operations
 
 ```bash
-# Pull latest code and rebuild
+# Pull and redeploy
+cd /var/www/platos
 git pull
-docker compose -f deploy/docker-compose.yml up -d --build
+pnpm install --frozen-lockfile
+pnpm run build:prod
+pm2 reload ecosystem.config.cjs --env production
 
-# View live API logs
-docker compose -f deploy/docker-compose.yml logs -f api
+# Apply schema changes after a migration
+pnpm --filter @workspace/db run push
 
-# Run seed script
-docker compose -f deploy/docker-compose.yml exec api \
-  node --enable-source-maps artifacts/api-server/dist/index.mjs seed
+# Seed sample data
+NODE_ENV=production pnpm --filter @workspace/api-server run seed
 
-# Run a one-off DB migration after schema changes
-docker compose -f deploy/docker-compose.yml run --rm migrate
+# Tail logs
+pm2 logs platos-core-web    # API + frontend
+pm2 logs platos-core-worker # scraper job runner
 
-# Restart just the API
-docker compose -f deploy/docker-compose.yml restart api
+# Restart individual process
+pm2 restart platos-core-web
+pm2 restart platos-core-worker
 
 # Stop everything
-docker compose -f deploy/docker-compose.yml down
-
-# Stop everything AND wipe the database
-docker compose -f deploy/docker-compose.yml down -v
+pm2 stop all
 ```
 
 ---
 
-## Environment variables reference
+## Environment variables
 
-See `deploy/.env.example` for the full list with descriptions.
+All config comes from `.env` in the project root. See `.env.example` for the full
+reference. Required before first boot:
 
-Required before first boot:
-- `POSTGRES_PASSWORD` — strong password, never the example value
-- `APP_URL` — your public domain (`https://yourdomain.com`)
-- `SESSION_SECRET` — 32+ random characters
-- `CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` — from Clerk dashboard
-- `OPENAI_API_KEY` — for ICP brief parsing
-- `RESEND_API_KEY` — for activation emails
-- `ADMIN_EMAILS` — comma-separated list of admin Clerk emails
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Postgres connection string |
+| `APP_URL` | Public URL — used in email CTAs |
+| `CLERK_SECRET_KEY` | Clerk backend key |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Clerk frontend key (baked into build) |
+| `OPENAI_API_KEY` | ICP brief parsing |
+| `RESEND_API_KEY` | Transactional email |
+| `RESEND_FROM_EMAIL` | From address for outbound emails |
+| `ADMIN_EMAILS` | Comma-separated admin email addresses |
+
+Optional:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `INTERNAL_SLACK_WEBHOOK_URL` | _(none)_ | Slack ping on workspace activation |
+| `JOB_RUNNER_INTERVAL_MS` | `60000` | Worker polling interval |
+| `JOB_RUNNER_CONCURRENCY` | `3` | Max concurrent scraper jobs per tick |
+| `ENABLE_PLAYWRIGHT` | `false` | Enable headless LinkedIn scraper |
+| `FRONTEND_DIST` | auto-detected | Override path to built frontend files |
 
 ---
 
-## Job runner
+## Scraper worker
 
-The API container runs the scraper job runner as an in-process `setInterval` loop — no separate container needed. It:
+`platos-core-worker` is a separate PM2 process with no HTTP server.
+It polls `scraper_jobs` every `JOB_RUNNER_INTERVAL_MS` and:
 
-- Ticks every `JOB_RUNNER_INTERVAL_MS` (default 60 s)
-- Picks up `scraper_jobs` with `status = queued` whose `source_configs.status = active`
-- Writes real signal rows to the `signals` table
+- Only processes jobs with `status = queued` AND `source_configs.status = active`
+- Preview workspaces (status `preview_paused`) are **never** executed
+- Writes real signal rows to `signals` with `workspace_id` isolation
 - Records `run_log` and `error_message` per job
+- Marks failed jobs `failed` — no silent suppression
 
-**Preview workspaces are never executed** — the runner only processes jobs joined to an `active` source config.
-
----
-
-## Clerk configuration
-
-After deploying you need to add your droplet's domain to Clerk:
-1. Go to **Clerk Dashboard → Domains**
-2. Add `yourdomain.com` as a production domain
-3. Copy the new `pk_live_...` / `sk_live_...` keys into `deploy/.env`
-4. Rebuild: `docker compose -f deploy/docker-compose.yml up -d --build`
+The web process (`platos-core-web`) does **not** run the worker — the two
+processes are fully separated and only share `DATABASE_URL`.

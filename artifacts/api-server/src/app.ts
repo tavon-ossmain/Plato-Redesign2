@@ -52,4 +52,19 @@ app.use(
 app.use("/api/assets", express.static(path.join(__dirname, "assets")));
 app.use("/api", router);
 
+// In production, serve the compiled frontend and handle SPA routing.
+// The frontend build is expected at artifacts/platos-core/dist/public
+// (override with FRONTEND_DIST env var if your layout differs).
+if (process.env.NODE_ENV === "production") {
+  const frontendDist = process.env["FRONTEND_DIST"]
+    ? path.resolve(process.env["FRONTEND_DIST"])
+    : path.join(__dirname, "../../platos-core/dist/public");
+
+  app.use(express.static(frontendDist));
+
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+}
+
 export default app;

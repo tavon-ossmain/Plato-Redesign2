@@ -4,8 +4,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "./logger";
 
-const FROM     = process.env.RESEND_FROM_EMAIL ?? "Plato's <hello@platos.agency>";
-const APP_URL  = process.env.APP_URL ?? "https://plato-redesign.replit.app";
+const FROM    = process.env.RESEND_FROM_EMAIL ?? "Plato's <hello@platos.agency>";
+const APP_URL = process.env.APP_URL ?? "";
 const CALENDLY = "https://calendly.com/platos-io/15min";
 
 // Inline the logo so it renders in email clients regardless of deployment state
@@ -470,9 +470,9 @@ export async function sendAdminSlackActivation({
   sources: string[];
   deliveryMode: string;
 }) {
-  const url = process.env.ADMIN_SLACK_WEBHOOK_URL;
+  const url = process.env.INTERNAL_SLACK_WEBHOOK_URL;
   if (!url) {
-    logger.warn("ADMIN_SLACK_WEBHOOK_URL not set — skipping Slack ping");
+    logger.info("INTERNAL_SLACK_WEBHOOK_URL not set — skipping Slack ping");
     return;
   }
   try {

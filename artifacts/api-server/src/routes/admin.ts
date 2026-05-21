@@ -15,9 +15,10 @@ import type { Request, Response, NextFunction } from "express";
 
 const router = Router();
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "tavon@platos.agency")
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
-  .map((e) => e.trim().toLowerCase());
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   linkedin:  "LinkedIn",
