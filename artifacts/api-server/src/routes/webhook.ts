@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Request } from "express";
+import { createHash } from "node:crypto";
 import { z } from "zod/v4";
 import { eq } from "drizzle-orm";
 import { db, workspacesTable, workspaceSourcesTable, sourceConfigsTable, scraperJobsTable } from "@workspace/db";
@@ -75,6 +76,10 @@ function requireWebhookSecret(req: Request): boolean {
   return normalized === expected;
 }
 
+function workspaceIdForEmail(email: string): string {
+  return `ws-${createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 16)}`;
+}
+
 function extractSeedUrls(brief: z.infer<typeof briefSchema>): string[] {
   const raw = [
     brief.icp,
@@ -120,8 +125,6 @@ router.post("/webhooks/brief", async (req, res, next) => {
       "Brief received",
     );
 
-    const workspaceId = `ws-${Buffer.from(brief.contactEmail).toString("base64url").slice(0, 12)}`;
-
     const [existingWorkspace] = await db
       .select({
         id: workspacesTable.id,
@@ -129,8 +132,10 @@ router.post("/webhooks/brief", async (req, res, next) => {
         icpConfig: workspacesTable.icpConfig,
       })
       .from(workspacesTable)
-      .where(eq(workspacesTable.id, workspaceId))
+      .where(eq(workspacesTable.ownerEmail, emailKey))
       .limit(1);
+
+    const workspaceId = existingWorkspace?.id ?? workspaceIdForEmail(emailKey);
 
     if (existingWorkspace?.icpConfig) {
       req.log.info({ workspaceId }, "Existing brief workspace returned without re-running GPT");
