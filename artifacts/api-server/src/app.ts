@@ -14,6 +14,16 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+function allowedOrigins(): string[] {
+  return [
+    process.env.APP_URL,
+    process.env.MARKETING_SITE_URL,
+    ...(process.env.CORS_ALLOWED_ORIGINS ?? "").split(","),
+  ]
+    .map((origin) => origin?.trim())
+    .filter((origin): origin is string => Boolean(origin));
+}
+
 app.use(
   pinoHttp({
     logger,
@@ -36,9 +46,25 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+  credentials: true,
+  origin(origin, callback) {
+    if (!origin || process.env.NODE_ENV !== "production") {
+      callback(null, true);
+      return;
+    }
+
+    const allowed = allowedOrigins();
+    if (allowed.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("CORS origin not allowed"));
+  },
+}));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? "64kb" }));
+app.use(express.urlencoded({ extended: true, limit: process.env.FORM_BODY_LIMIT ?? "64kb" }));
 
 app.use(
   clerkMiddleware((req) => ({

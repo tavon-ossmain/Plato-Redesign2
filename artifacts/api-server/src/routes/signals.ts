@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and, count, sql } from "drizzle-orm";
 import { db, workspacesTable, signalsTable, workspaceSourcesTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
+import { canAccessWorkspace, primaryEmailForRequest } from "../lib/security";
 
 const router = Router();
 router.use(requireAuth);
@@ -49,6 +50,12 @@ function toApiSignal(row: typeof signalsTable.$inferSelect) {
 
 router.get("/workspaces", async (_req, res, next) => {
   try {
+    const email = await primaryEmailForRequest(_req);
+    if (!email) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
     const rows = await db
       .select({
         id:    workspacesTable.id,
@@ -57,7 +64,8 @@ router.get("/workspaces", async (_req, res, next) => {
         quota: workspacesTable.quota,
         used:  workspacesTable.used,
       })
-      .from(workspacesTable);
+      .from(workspacesTable)
+      .where(eq(workspacesTable.ownerEmail, email));
     res.json(rows);
   } catch (err) {
     next(err);
@@ -67,6 +75,10 @@ router.get("/workspaces", async (_req, res, next) => {
 router.get("/workspaces/:workspaceId/dashboard", async (req, res, next) => {
   try {
     const { workspaceId } = req.params;
+    if (!(await canAccessWorkspace(req, workspaceId))) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
 
     const [ws] = await db
       .select()
@@ -114,6 +126,10 @@ router.get("/workspaces/:workspaceId/dashboard", async (req, res, next) => {
 router.get("/workspaces/:workspaceId/pipeline", async (req, res, next) => {
   try {
     const { workspaceId } = req.params;
+    if (!(await canAccessWorkspace(req, workspaceId))) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
 
     const [ws] = await db
       .select({ id: workspacesTable.id })
@@ -142,6 +158,10 @@ router.post("/workspaces/:workspaceId/opportunities/:opportunityId/assign", asyn
   try {
     const { workspaceId, opportunityId } = req.params;
     const { owner } = req.body as { owner?: string };
+    if (!(await canAccessWorkspace(req, workspaceId))) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
 
     const [existing] = await db
       .select()
@@ -179,6 +199,11 @@ router.post("/feedback", async (req, res, next) => {
 
     if (!signalId || !workspaceId || !feedback) {
       res.status(400).json({ error: "signalId, workspaceId and feedback are required" });
+      return;
+    }
+
+    if (!(await canAccessWorkspace(req, workspaceId))) {
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
 

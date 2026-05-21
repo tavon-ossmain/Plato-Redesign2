@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { z } from "zod/v4";
 import { and, desc, eq } from "drizzle-orm";
-import { clerkClient } from "@clerk/express";
 import {
   db,
   workspacesTable,
@@ -11,14 +10,10 @@ import {
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import { sendActivationEmail, sendAdminSlackActivation } from "../lib/email";
+import { isAdminRequest } from "../lib/security";
 import type { Request, Response, NextFunction } from "express";
 
 const router = Router();
-
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   linkedin:  "LinkedIn",
@@ -31,15 +26,7 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
 async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   requireAuth(req, res, async () => {
     try {
-      const userId = (req as Request & { userId?: string }).userId;
-      if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-      const user = await clerkClient.users.getUser(userId);
-      const email = user.emailAddresses
-        .find((e: { id: string; emailAddress: string }) => e.id === user.primaryEmailAddressId)
-        ?.emailAddress ?? "";
-
-      if (!ADMIN_EMAILS.includes(email.toLowerCase())) {
+      if (!(await isAdminRequest(req))) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
@@ -173,7 +160,15 @@ router.patch("/admin/workspaces/:id", requireAdmin, async (req, res, next) => {
 
     await db.update(workspacesTable).set(set).where(eq(workspacesTable.id, id));
 
-    req.log.info({ workspaceId: id, patch }, "Admin patched workspace");
+    req.log.info(
+      {
+        workspaceId: id,
+        patchKeys: Object.keys(patch),
+        status: patch.status,
+        deliveryMode: patch.deliveryMode,
+      },
+      "Admin patched workspace",
+    );
     res.json({ id, ...set });
   } catch (err) {
     next(err);
@@ -183,7 +178,7 @@ router.patch("/admin/workspaces/:id", requireAdmin, async (req, res, next) => {
 // PATCH /api/admin/source-configs/:id — edit individual source config
 const patchSourceConfigSchema = z.object({
   status:              z.enum(["preview_paused", "active", "paused", "disabled"]).optional(),
-  dailyLimit:          z.number().int().min(1).max(10000).optional(),
+  dailyLimit:          z.number().int().min(1).max(500).optional(),
   confidenceThreshold: z.number().min(0).max(1).optional(),
   keywords:            z.array(z.string()).optional(),
   disqualifiers:       z.array(z.string()).optional(),
@@ -219,7 +214,16 @@ router.patch("/admin/source-configs/:id", requireAdmin, async (req, res, next) =
 
     await db.update(sourceConfigsTable).set(set).where(eq(sourceConfigsTable.id, id));
 
-    req.log.info({ sourceConfigId: id, patch }, "Admin patched source config");
+    req.log.info(
+      {
+        sourceConfigId: id,
+        patchKeys: Object.keys(patch),
+        status: patch.status,
+        dailyLimit: patch.dailyLimit,
+        runFrequency: patch.runFrequency,
+      },
+      "Admin patched source config",
+    );
     res.json({ id, ...set });
   } catch (err) {
     next(err);

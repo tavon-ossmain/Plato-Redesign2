@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Request } from "express";
 import { z } from "zod/v4";
 import { eq } from "drizzle-orm";
 import { db, workspacesTable, workspaceSourcesTable, sourceConfigsTable, scraperJobsTable } from "@workspace/db";
@@ -6,6 +7,11 @@ import { parseIcp } from "../lib/parseIcp";
 import { sendBriefConfirmation } from "../lib/email";
 
 const router = Router();
+
+type RateBucket = { count: number; resetAt: number };
+
+const ipBuckets = new Map<string, RateBucket>();
+const emailBuckets = new Map<string, RateBucket>();
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   linkedin:   "LinkedIn",
@@ -25,14 +31,49 @@ const SOURCE_TYPE_MAP: Record<string, string> = {
 };
 
 const briefSchema = z.object({
-  companyName:        z.string().min(1),
+  companyName:        z.string().min(1).max(120),
   contactEmail:       z.email(),
-  plan:               z.string().optional(),
-  icp:                z.string().optional(),
-  useCases:           z.string().optional(),
-  signalSources:      z.array(z.string()).optional(),
-  additionalContext:  z.string().optional(),
+  plan:               z.string().max(60).optional(),
+  icp:                z.string().max(2_000).optional(),
+  useCases:           z.string().max(1_000).optional(),
+  signalSources:      z.array(z.string().max(40)).max(8).optional(),
+  additionalContext:  z.string().max(2_000).optional(),
 });
+
+function clientIp(req: Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return forwarded.split(",")[0]?.trim() ?? req.ip ?? "unknown";
+  }
+  return req.ip ?? "unknown";
+}
+
+function consumeBucket(
+  map: Map<string, RateBucket>,
+  key: string,
+  limit: number,
+  windowMs: number,
+): boolean {
+  const now = Date.now();
+  const bucket = map.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    map.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (bucket.count >= limit) return false;
+  bucket.count += 1;
+  return true;
+}
+
+function requireWebhookSecret(req: Request): boolean {
+  const expected = process.env.PLATOS_BRIEF_WEBHOOK_SECRET;
+  if (!expected) return true;
+
+  const header = req.headers["x-plato-webhook-secret"] ?? req.headers.authorization;
+  const value = Array.isArray(header) ? header[0] : header;
+  const normalized = value?.replace(/^Bearer\s+/i, "");
+  return normalized === expected;
+}
 
 function extractSeedUrls(brief: z.infer<typeof briefSchema>): string[] {
   const raw = [
@@ -48,24 +89,62 @@ function extractSeedUrls(brief: z.infer<typeof briefSchema>): string[] {
 // POST /api/webhooks/brief — public, no Clerk auth
 router.post("/webhooks/brief", async (req, res, next) => {
   try {
+    if (!requireWebhookSecret(req)) {
+      res.status(401).json({ error: "Unauthorized webhook" });
+      return;
+    }
+
+    const ipLimit = Number(process.env.BRIEF_WEBHOOK_IP_LIMIT_PER_HOUR ?? 20);
+    const emailLimit = Number(process.env.BRIEF_WEBHOOK_EMAIL_LIMIT_PER_DAY ?? 3);
+    if (!consumeBucket(ipBuckets, clientIp(req), ipLimit, 3_600_000)) {
+      res.status(429).json({ error: "Too many brief submissions from this IP" });
+      return;
+    }
+
     const result = briefSchema.safeParse(req.body);
     if (!result.success) {
       res.status(400).json({ error: "Invalid brief", details: result.error.issues });
       return;
     }
     const brief = result.data;
+    const emailKey = brief.contactEmail.toLowerCase();
+
+    if (!consumeBucket(emailBuckets, emailKey, emailLimit, 86_400_000)) {
+      res.status(429).json({ error: "Too many brief submissions for this email" });
+      return;
+    }
 
     // Log receipt immediately — captures every prospect before GPT/DB
     req.log.info(
-      { company: brief.companyName, email: brief.contactEmail, sources: brief.signalSources },
+      { company: brief.companyName, emailDomain: brief.contactEmail.split("@")[1], sources: brief.signalSources },
       "Brief received",
     );
 
+    const workspaceId = `ws-${Buffer.from(brief.contactEmail).toString("base64url").slice(0, 12)}`;
+
+    const [existingWorkspace] = await db
+      .select({
+        id: workspacesTable.id,
+        status: workspacesTable.status,
+        icpConfig: workspacesTable.icpConfig,
+      })
+      .from(workspacesTable)
+      .where(eq(workspacesTable.id, workspaceId))
+      .limit(1);
+
+    if (existingWorkspace?.icpConfig) {
+      req.log.info({ workspaceId }, "Existing brief workspace returned without re-running GPT");
+      res.status(200).json({
+        workspaceId,
+        signInUrl: `${process.env.APP_URL ?? ""}/sign-up`,
+        icpConfig: existingWorkspace.icpConfig,
+        status: existingWorkspace.status,
+      });
+      return;
+    }
+
     // Parse ICP with GPT (cost-guarded)
     const icpConfig = await parseIcp(brief);
-
-    // Generate a stable workspace id from the email
-    const workspaceId = `ws-${Buffer.from(brief.contactEmail).toString("base64url").slice(0, 12)}`;
 
     // Upsert workspace
     await db
@@ -157,7 +236,7 @@ router.post("/webhooks/brief", async (req, res, next) => {
     });
   } catch (err) {
     req.log.error(
-      { company: req.body?.companyName, email: req.body?.contactEmail, err },
+      { company: req.body?.companyName, emailDomain: String(req.body?.contactEmail ?? "").split("@")[1], err },
       "Brief processing failed",
     );
     next(err);
