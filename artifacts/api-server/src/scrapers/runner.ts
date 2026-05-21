@@ -123,6 +123,7 @@ async function processJob(jobId: number, config: SourceConfig): Promise<void> {
     disqualifiers:       (config.disqualifiers as string[]) ?? [],
     targetTitles:        (config.targetTitles as string[]) ?? [],
     targetIndustries:    (config.targetIndustries as string[]) ?? [],
+    seedUrls:            (config.seedUrls as string[]) ?? [],
     companySizeRange:    config.companySizeRange ?? null,
     confidenceThreshold: config.confidenceThreshold,
     dailyLimit:          config.dailyLimit,

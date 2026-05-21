@@ -26,6 +26,7 @@ interface SourceConfig {
   disqualifiers: string[];
   targetTitles: string[];
   targetIndustries: string[];
+  seedUrls: string[];
   companySizeRange: string | null;
   confidenceThreshold: number;
   dailyLimit: number;
@@ -105,6 +106,7 @@ function SourceConfigCard({
 }) {
   const [dailyLimit, setDailyLimit]   = useState(String(config.dailyLimit));
   const [threshold, setThreshold]     = useState(String(Math.round(config.confidenceThreshold * 100)));
+  const [seedUrls, setSeedUrls]       = useState((config.seedUrls ?? []).join("\n"));
   const [saving, setSaving]           = useState(false);
   const [saved, setSaved]             = useState(false);
   const [expanded, setExpanded]       = useState(false);
@@ -124,6 +126,7 @@ function SourceConfigCard({
     await onSave(config.id, {
       dailyLimit:          parseInt(dailyLimit, 10) || config.dailyLimit,
       confidenceThreshold: (parseInt(threshold, 10) || Math.round(config.confidenceThreshold * 100)) / 100,
+      seedUrls:            seedUrls.split(/\s+/).map((url) => url.trim()).filter(Boolean),
     });
     setSaving(false);
     setSaved(true);
@@ -197,6 +200,22 @@ function SourceConfigCard({
                   <span className="text-[10px]" style={{ color: "#5a5a78" }}>+{config.keywords.length - 6} more</span>
                 )}
               </div>
+            </div>
+          )}
+
+          {config.sourceType === "web" && (
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#5a5a78" }}>Seed URLs</p>
+              <textarea
+                value={seedUrls}
+                onChange={(e) => setSeedUrls(e.target.value)}
+                placeholder="https://example.com/pricing&#10;https://example.com/customers"
+                rows={3}
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+              <p className="text-[10px] mt-1" style={{ color: "#5a5a78" }}>
+                One URL per line. DOM scraping only runs when seed URLs are present.
+              </p>
             </div>
           )}
 

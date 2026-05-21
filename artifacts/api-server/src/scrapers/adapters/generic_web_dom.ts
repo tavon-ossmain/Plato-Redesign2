@@ -81,7 +81,7 @@ export const genericWebDomAdapter: ScraperAdapter = {
   sourceType: "web",
 
   async run(input: ScraperInput): Promise<RawSignal[]> {
-    const seedUrls: string[] = (input as unknown as { seedUrls?: string[] }).seedUrls ?? [];
+    const seedUrls = input.seedUrls;
 
     if (seedUrls.length === 0) {
       logger.info(

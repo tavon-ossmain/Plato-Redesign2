@@ -6,6 +6,7 @@ export interface ScraperInput {
   disqualifiers: string[];
   targetTitles: string[];
   targetIndustries: string[];
+  seedUrls: string[];
   companySizeRange: string | null;
   confidenceThreshold: number;
   dailyLimit: number;

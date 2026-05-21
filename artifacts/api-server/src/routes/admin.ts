@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod/v4";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { clerkClient } from "@clerk/express";
 import {
   db,
@@ -125,13 +125,19 @@ router.patch("/admin/workspaces/:id", requireAdmin, async (req, res, next) => {
       await db
         .update(sourceConfigsTable)
         .set({ status: "active", updatedAt: new Date() })
-        .where(eq(sourceConfigsTable.workspaceId, id));
+        .where(and(
+          eq(sourceConfigsTable.workspaceId, id),
+          eq(sourceConfigsTable.status, "preview_paused"),
+        ));
 
       // Flip paused → queued for all scraper jobs, set next_run_at = now
       await db
         .update(scraperJobsTable)
         .set({ status: "queued", nextRunAt: new Date(), updatedAt: new Date() })
-        .where(eq(scraperJobsTable.workspaceId, id));
+        .where(and(
+          eq(scraperJobsTable.workspaceId, id),
+          eq(scraperJobsTable.status, "paused"),
+        ));
 
       req.log.info({ workspaceId: id }, "Activation cascade: source configs + scraper jobs queued");
 
@@ -183,6 +189,7 @@ const patchSourceConfigSchema = z.object({
   disqualifiers:       z.array(z.string()).optional(),
   targetTitles:        z.array(z.string()).optional(),
   targetIndustries:    z.array(z.string()).optional(),
+  seedUrls:            z.array(z.string().url()).optional(),
   companySizeRange:    z.string().optional(),
   runFrequency:        z.enum(["hourly", "daily", "weekly"]).optional(),
 });
@@ -206,6 +213,7 @@ router.patch("/admin/source-configs/:id", requireAdmin, async (req, res, next) =
     if (patch.disqualifiers       !== undefined) set.disqualifiers       = patch.disqualifiers;
     if (patch.targetTitles        !== undefined) set.targetTitles        = patch.targetTitles;
     if (patch.targetIndustries    !== undefined) set.targetIndustries    = patch.targetIndustries;
+    if (patch.seedUrls            !== undefined) set.seedUrls            = patch.seedUrls;
     if (patch.companySizeRange    !== undefined) set.companySizeRange    = patch.companySizeRange;
     if (patch.runFrequency        !== undefined) set.runFrequency        = patch.runFrequency;
 

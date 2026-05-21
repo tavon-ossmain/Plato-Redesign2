@@ -3,12 +3,14 @@ import { redditAdapter }       from "./adapters/reddit.js";
 import { jobboardsAdapter }    from "./adapters/jobboards.js";
 import { genericWebDomAdapter } from "./adapters/generic_web_dom.js";
 import { playwrightAdapter }   from "./adapters/playwright.js";
+import { g2Adapter }           from "./adapters/g2.js";
 
 const adapters: ScraperAdapter[] = [
   redditAdapter,
   jobboardsAdapter,
   genericWebDomAdapter,
   playwrightAdapter,
+  g2Adapter,
 ];
 
 const registry = new Map<string, ScraperAdapter>(

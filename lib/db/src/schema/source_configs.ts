@@ -11,6 +11,7 @@ export const sourceConfigsTable = pgTable("source_configs", {
   disqualifiers:       jsonb("disqualifiers").$type<string[]>().notNull().default([]),
   targetTitles:        jsonb("target_titles").$type<string[]>().notNull().default([]),
   targetIndustries:    jsonb("target_industries").$type<string[]>().notNull().default([]),
+  seedUrls:            jsonb("seed_urls").$type<string[]>().notNull().default([]),
   companySizeRange:    text("company_size_range"),
   confidenceThreshold: real("confidence_threshold").notNull().default(0.7),
   dailyLimit:          integer("daily_limit").notNull().default(50),

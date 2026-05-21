@@ -34,6 +34,17 @@ const briefSchema = z.object({
   additionalContext:  z.string().optional(),
 });
 
+function extractSeedUrls(brief: z.infer<typeof briefSchema>): string[] {
+  const raw = [
+    brief.icp,
+    brief.useCases,
+    brief.additionalContext,
+  ].filter(Boolean).join("\n");
+
+  const matches = raw.match(/https?:\/\/[^\s),]+/gi) ?? [];
+  return [...new Set(matches)].slice(0, 25);
+}
+
 // POST /api/webhooks/brief — public, no Clerk auth
 router.post("/webhooks/brief", async (req, res, next) => {
   try {
@@ -97,6 +108,7 @@ router.post("/webhooks/brief", async (req, res, next) => {
 
     if (existingConfigs.length === 0 && icpConfig.signalSources.length > 0) {
       const confidenceThreshold = icpConfig.confidence >= 0.85 ? 0.75 : 0.65;
+      const seedUrls = extractSeedUrls(brief);
 
       const configRows = icpConfig.signalSources.map((src: string) => ({
         workspaceId,
@@ -105,6 +117,7 @@ router.post("/webhooks/brief", async (req, res, next) => {
         disqualifiers:       icpConfig.disqualifiers,
         targetTitles:        [] as string[],
         targetIndustries:    [] as string[],
+        seedUrls:            src === "webscrape" ? seedUrls : [],
         confidenceThreshold,
         dailyLimit:          50,
         createdFrom:         "brief_ai" as const,
