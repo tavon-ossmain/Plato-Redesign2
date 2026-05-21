@@ -34,9 +34,18 @@ const briefSchema = z.object({
   additionalContext:  z.string().optional(),
 });
 
-// POST /api/webhooks/brief — public, no Clerk auth
+// POST /api/webhooks/brief — secret-guarded (X-Plato-Webhook-Secret header)
 router.post("/webhooks/brief", async (req, res, next) => {
   try {
+    const expectedSecret = process.env.PLATOS_CORE_WEBHOOK_SECRET;
+    if (expectedSecret) {
+      const incoming = req.headers["x-plato-webhook-secret"];
+      if (!incoming || incoming !== expectedSecret) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+    }
+
     const result = briefSchema.safeParse(req.body);
     if (!result.success) {
       res.status(400).json({ error: "Invalid brief", details: result.error.issues });
