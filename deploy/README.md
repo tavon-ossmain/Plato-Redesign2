@@ -98,6 +98,8 @@ nano .env
 pnpm --filter @workspace/db run push
 
 # 5 — Build for production (compiles API + frontend)
+# Vite bakes VITE_* values into the frontend bundle, so export .env first.
+set -a && . ./.env && set +a
 pnpm run build:prod
 
 # 6 — Start with PM2
@@ -172,6 +174,7 @@ Before auth works you must register your production domain with Clerk:
 5. Rebuild the frontend (the publishable key is baked in at build time):
 
 ```bash
+set -a && . ./.env && set +a
 pnpm run build:prod
 pm2 reload platos-core-web
 ```
@@ -185,6 +188,7 @@ pm2 reload platos-core-web
 cd /var/www/platos
 git pull
 pnpm install --frozen-lockfile
+set -a && . ./.env && set +a
 pnpm run build:prod
 pm2 reload ecosystem.config.cjs --env production
 
