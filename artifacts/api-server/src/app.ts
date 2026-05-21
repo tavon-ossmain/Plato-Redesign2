@@ -60,7 +60,7 @@ app.use(cors({
       return;
     }
 
-    callback(new Error("CORS origin not allowed"));
+    callback(null, false);
   },
 }));
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? "64kb" }));
