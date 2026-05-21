@@ -50,4 +50,5 @@ Thumbs.db
 
 # Secrets — never commit
 .env
+.env.*
 deploy/.env
