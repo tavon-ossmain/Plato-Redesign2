@@ -8,7 +8,7 @@ import {
   type SourceConfig,
 } from "@workspace/db/schema";
 import { logger } from "../lib/logger.js";
-import { enrichSignalsWithApollo } from "../lib/apollo.js";
+import { enrichSignals } from "../lib/enrichment.js";
 import { deliverSignalsToSlack } from "../lib/signalDelivery.js";
 import { getAdapter } from "./registry.js";
 import type { ScraperInput, RawSignal } from "./types.js";
@@ -138,7 +138,7 @@ async function processJob(jobId: number, config: SourceConfig): Promise<void> {
 
   try {
     const results = await adapter.run(input);
-    const enrichedResults = await enrichSignalsWithApollo(results);
+    const enrichedResults = await enrichSignals(results);
     const writtenSignals = await writeSignals(enrichedResults, config);
     await deliverSignalsToSlack(config.workspaceId, writtenSignals);
 
