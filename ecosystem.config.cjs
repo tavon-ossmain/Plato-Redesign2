@@ -7,6 +7,30 @@
  *   pm2 startup   # auto-restart on reboot
  */
 
+const fs = require("node:fs");
+
+const DEPLOY_DIR = process.env.PLATOS_DEPLOY_DIR || "/var/www/platos";
+const ENV_PATH = process.env.PLATOS_ENV_PATH || `${DEPLOY_DIR}/.env`;
+
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+
+  return fs.readFileSync(filePath, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .reduce((acc, line) => {
+      const idx = line.indexOf("=");
+      if (idx === -1) return acc;
+      const key = line.slice(0, idx).trim();
+      const raw = line.slice(idx + 1).trim();
+      acc[key] = raw.replace(/^["']|["']$/g, "");
+      return acc;
+    }, {});
+}
+
+const fileEnv = loadEnvFile(ENV_PATH);
+
 module.exports = {
   apps: [
     {
@@ -14,9 +38,9 @@ module.exports = {
       name: "platos-core-web",
       script: "node",
       args: "--enable-source-maps artifacts/api-server/dist/index.mjs",
-      cwd: "/var/www/platos",
-      env_file: "/var/www/platos/.env",
+      cwd: DEPLOY_DIR,
       env: {
+        ...fileEnv,
         NODE_ENV: "production",
         PORT: "8080",
       },
@@ -40,9 +64,9 @@ module.exports = {
       name: "platos-core-worker",
       script: "node",
       args: "--enable-source-maps artifacts/api-server/dist/worker.mjs",
-      cwd: "/var/www/platos",
-      env_file: "/var/www/platos/.env",
+      cwd: DEPLOY_DIR,
       env: {
+        ...fileEnv,
         NODE_ENV: "production",
         // Tune polling interval and concurrency via env if needed
         // JOB_RUNNER_INTERVAL_MS: "60000",
