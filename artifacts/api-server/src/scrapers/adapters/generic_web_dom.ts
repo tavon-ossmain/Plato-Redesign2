@@ -1,5 +1,6 @@
 import type { ScraperAdapter, ScraperInput, RawSignal } from "../types.js";
 import { logger } from "../../lib/logger.js";
+import { textFitScore } from "../scoring.js";
 
 /**
  * Generic web DOM adapter.
@@ -19,15 +20,6 @@ function stripHtml(html: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
-}
-
-function fitScore(text: string, keywords: string[], disqualifiers: string[]): number {
-  const lower = text.toLowerCase();
-  if (disqualifiers.some((d) => lower.includes(d.toLowerCase()))) return 0;
-  const total = keywords.length;
-  if (total === 0) return 10;
-  const hits = keywords.filter((k) => lower.includes(k.toLowerCase())).length;
-  return Math.min(90, Math.round((hits / total) * 80) + 10);
 }
 
 function extractTitle(html: string): string {
@@ -53,7 +45,7 @@ async function scrapeUrl(
   }
 
   const text  = stripHtml(html);
-  const fit   = fitScore(text, input.keywords, input.disqualifiers);
+  const fit   = textFitScore(text, input.keywords, input.disqualifiers);
   if (fit === 0) return null;
 
   const pageTitle = extractTitle(html);

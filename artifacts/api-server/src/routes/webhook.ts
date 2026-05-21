@@ -157,7 +157,7 @@ router.post("/webhooks/brief", async (req, res, next) => {
       .values({
         id:         workspaceId,
         name:       brief.companyName,
-        ownerEmail: brief.contactEmail,
+        ownerEmail: emailKey,
         plan:       brief.plan ?? "Growth",
         quota:      200,
         used:       0,
@@ -232,7 +232,8 @@ router.post("/webhooks/brief", async (req, res, next) => {
     );
 
     // Send confirmation email — fire and forget
-    sendBriefConfirmation({ to: brief.contactEmail, companyName: brief.companyName });
+    sendBriefConfirmation({ to: brief.contactEmail, companyName: brief.companyName })
+      .catch((err: unknown) => req.log.warn({ err, workspaceId }, "Brief confirmation email failed silently"));
 
     res.status(201).json({
       workspaceId,

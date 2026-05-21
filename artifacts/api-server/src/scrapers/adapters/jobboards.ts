@@ -1,5 +1,6 @@
 import type { ScraperAdapter, ScraperInput, RawSignal } from "../types.js";
 import { logger } from "../../lib/logger.js";
+import { textFitScore } from "../scoring.js";
 
 interface RemoteOKJob {
   id: string | number;
@@ -34,15 +35,6 @@ function freshnessScore(isoDate: string): number {
   return 10;
 }
 
-function textFit(text: string, keywords: string[], disqualifiers: string[]): number {
-  const lower = text.toLowerCase();
-  if (disqualifiers.some((d) => lower.includes(d.toLowerCase()))) return 0;
-  const total = keywords.length;
-  if (total === 0) return 10;
-  const hits = keywords.filter((k) => lower.includes(k.toLowerCase())).length;
-  return Math.min(90, Math.round((hits / total) * 80) + 10);
-}
-
 async function fetchRemoteOK(
   input: ScraperInput,
 ): Promise<RawSignal[]> {
@@ -64,7 +56,7 @@ async function fetchRemoteOK(
   for (const job of jobs) {
     if (results.length >= Math.floor(input.dailyLimit * 0.6)) break;
     const searchText = `${job.position} ${job.description} ${(job.tags ?? []).join(" ")}`;
-    const fit = textFit(searchText, input.keywords, input.disqualifiers);
+    const fit = textFitScore(searchText, input.keywords, input.disqualifiers);
     if (fit === 0) continue;
 
     results.push({
@@ -108,7 +100,7 @@ async function fetchHNWhoIsHiring(
   for (const hit of data.hits ?? []) {
     if (results.length >= Math.floor(input.dailyLimit * 0.4)) break;
     const text = hit.comment_text?.replace(/<[^>]+>/g, " ") ?? "";
-    const fit = textFit(text, input.keywords, input.disqualifiers);
+    const fit = textFitScore(text, input.keywords, input.disqualifiers);
     if (fit === 0) continue;
 
     const companyMatch = text.match(/^([A-Z][a-zA-Z0-9&., ]{1,30})\s*[|(]/);

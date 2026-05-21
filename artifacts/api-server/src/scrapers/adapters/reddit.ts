@@ -1,5 +1,6 @@
 import type { ScraperAdapter, ScraperInput, RawSignal } from "../types.js";
 import { logger } from "../../lib/logger.js";
+import { textFitScore } from "../scoring.js";
 
 interface RedditPost {
   title: string;
@@ -27,15 +28,6 @@ function freshnessScore(createdUtc: number): number {
   if (ageH < 336) return 40;
   if (ageH < 720) return 25;
   return 10;
-}
-
-function fitScore(text: string, keywords: string[], disqualifiers: string[]): number {
-  const lower = text.toLowerCase();
-  if (disqualifiers.some((d) => lower.includes(d.toLowerCase()))) return 0;
-  const total = keywords.length;
-  if (total === 0) return 10;
-  const hits = keywords.filter((k) => lower.includes(k.toLowerCase())).length;
-  return Math.min(90, Math.round((hits / total) * 80) + 10);
 }
 
 function confidenceScore(post: RedditPost): number {
@@ -92,7 +84,7 @@ export const redditAdapter: ScraperAdapter = {
       if (results.length >= input.dailyLimit) break;
 
       const fullText = `${post.title} ${post.selftext}`;
-      const fit = fitScore(fullText, input.keywords, input.disqualifiers);
+      const fit = textFitScore(fullText, input.keywords, input.disqualifiers);
       if (fit === 0) continue;
 
       const snippet = `${post.title}\n${post.selftext.slice(0, 300)}`.trim();
