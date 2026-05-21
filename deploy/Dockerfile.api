@@ -1,0 +1,51 @@
+FROM node:24-alpine AS base
+RUN corepack enable && corepack prepare pnpm@latest --activate
+WORKDIR /app
+
+# Install dependencies (all packages needed for the build)
+FROM base AS deps
+COPY pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+COPY package.json ./
+COPY lib/db/package.json ./lib/db/
+COPY lib/api-spec/package.json ./lib/api-spec/
+COPY lib/api-client-react/package.json ./lib/api-client-react/
+COPY lib/api-zod/package.json ./lib/api-zod/
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+# Stub out other workspace packages so pnpm workspace resolution works
+RUN mkdir -p artifacts/platos-core artifacts/mockup-sandbox scripts
+COPY artifacts/platos-core/package.json ./artifacts/platos-core/ 2>/dev/null || echo '{"name":"@workspace/platos-core","version":"0.0.0"}' > artifacts/platos-core/package.json
+COPY scripts/package.json ./scripts/ 2>/dev/null || echo '{"name":"@workspace/scripts","version":"0.0.0"}' > scripts/package.json
+RUN pnpm install --frozen-lockfile
+
+# Build libs then API server
+FROM deps AS builder
+COPY tsconfig.base.json tsconfig.json ./
+COPY lib/ ./lib/
+COPY artifacts/api-server/ ./artifacts/api-server/
+RUN pnpm run typecheck:libs
+RUN pnpm --filter @workspace/api-server run build
+
+# Production image — only the compiled bundle + runtime deps
+FROM node:24-alpine AS runner
+RUN corepack enable && corepack prepare pnpm@latest --activate
+WORKDIR /app
+
+COPY pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+COPY package.json ./
+COPY lib/db/package.json ./lib/db/
+COPY lib/api-zod/package.json ./lib/api-zod/
+COPY lib/api-client-react/package.json ./lib/api-client-react/
+COPY lib/api-spec/package.json ./lib/api-spec/
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+RUN mkdir -p artifacts/platos-core scripts
+RUN echo '{"name":"@workspace/platos-core","version":"0.0.0"}' > artifacts/platos-core/package.json
+RUN echo '{"name":"@workspace/scripts","version":"0.0.0"}' > scripts/package.json
+RUN pnpm install --frozen-lockfile --prod
+
+COPY --from=builder /app/artifacts/api-server/dist ./artifacts/api-server/dist
+
+ENV NODE_ENV=production
+ENV PORT=8080
+EXPOSE 8080
+
+CMD ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
